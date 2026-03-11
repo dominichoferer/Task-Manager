@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTaskStore, type Company, type Theme } from '@/store/useTaskStore';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 const PRESET_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
@@ -47,11 +48,22 @@ export function SettingsPage() {
     }
   }
 
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+  }
+
   return (
     <div className="max-w-2xl space-y-10">
-      <div>
-        <h1 className="text-2xl font-bold c-text">Einstellungen</h1>
-        <p className="c-muted mt-1 text-sm">Design und Firmen verwalten</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold c-text">Einstellungen</h1>
+          <p className="c-muted mt-1 text-sm">Design und Firmen verwalten</p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 c-subtle hover:text-red-400">
+          <LogOut className="h-4 w-4" />
+          Abmelden
+        </Button>
       </div>
 
       {/* Theme section */}
