@@ -33,6 +33,7 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
   const [aiLoading, setAiLoading] = useState(false);
   const [expandLoading, setExpandLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const titleRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -123,6 +124,7 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
     if (!title.trim()) return;
 
     setSaving(true);
+    setSaveError(null);
     try {
       const input: CreateTaskInput = {
         title: title.trim(),
@@ -155,6 +157,8 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
       }
 
       onSuccess?.();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -389,6 +393,12 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
             </SelectContent>
           </Select>
         </div>
+      )}
+
+      {saveError && (
+        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 break-all">
+          Fehler: {saveError}
+        </p>
       )}
 
       <Button type="submit" className="w-full" disabled={saving}>

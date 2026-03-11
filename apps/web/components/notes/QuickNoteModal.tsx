@@ -19,6 +19,7 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
   const [saving, setSaving] = useState<'note' | 'task' | null>(null);
   const [saved, setSaved] = useState<{ type: 'note' | 'task'; title?: string } | null>(null);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,11 +52,14 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
   async function handleSaveNote() {
     if (!getPlainText()) return;
     setSaving('note');
+    setSaveError(null);
     try {
       await saveQuickNoteOnly(getHtml());
       setSaved({ type: 'note' });
       onSaved?.();
       setTimeout(() => { onClose(); setSaved(null); }, 1600);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(null);
     }
@@ -64,11 +68,14 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
   async function handleCreateTask() {
     if (!getPlainText()) return;
     setSaving('task');
+    setSaveError(null);
     try {
       const { task } = await saveQuickNote(getPlainText());
       setSaved({ type: 'task', title: task.title });
       onSaved?.();
       setTimeout(() => { onClose(); setSaved(null); }, 1800);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(null);
     }
@@ -172,6 +179,11 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
               <Sparkles className="h-3 w-3 text-indigo-400/60" />
               KI kann eine Aufgabe daraus erstellen
             </p>
+            {saveError && (
+              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2 py-1 max-w-xs truncate" title={saveError}>
+                {saveError}
+              </p>
+            )}
             <div className="flex items-center gap-2 ml-auto">
               <Button
                 onClick={handleSaveNote}
