@@ -41,7 +41,13 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
 
   // AI: Extract date from title
   async function handleAiTitleBlur() {
-    if (!title || dueDate) return;
+    if (!title) return;
+    // Company detection (always runs)
+    if (!companyId) {
+      const found = detectCompany(title + ' ' + description, companies);
+      if (found) setCompanyId(found.id);
+    }
+    if (dueDate) return;
     setAiLoading(true);
     try {
       const res = await fetch('/api/ai/extract-date', {
@@ -56,6 +62,13 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
       // silent fail
     } finally {
       setAiLoading(false);
+    }
+  }
+
+  function handleDescriptionBlur() {
+    if (!companyId) {
+      const found = detectCompany(title + ' ' + description, companies);
+      if (found) setCompanyId(found.id);
     }
   }
 
@@ -231,6 +244,7 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
           ref={textareaRef}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          onBlur={handleDescriptionBlur}
           placeholder="Stichpunkte oder Notizen... (mit 'Liste' Aufzählungspunkte hinzufügen)"
           rows={3}
         />
@@ -408,4 +422,18 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
       </Button>
     </form>
   );
+}
+
+import type { Company } from '@/store/useTaskStore';
+
+function detectCompany(text: string, companies: Company[]): Company | null {
+  if (!text || !companies.length) return null;
+  const sorted = [...companies].sort((a, b) => b.name.length - a.name.length);
+  for (const c of sorted) {
+    const escapedName = c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedAbbr = c.abbreviation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp(`\\b${escapedName}\\b`, 'i').test(text)) return c;
+    if (new RegExp(`\\b${escapedAbbr}\\b`, 'i').test(text)) return c;
+  }
+  return null;
 }

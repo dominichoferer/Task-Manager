@@ -242,13 +242,25 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     });
     const parsed = await res.json();
 
-    // 2. Create task
+    // 2. Detect company
+    const companies2 = get().companies;
+    let noteCompanyId: string | undefined;
+    for (const c of [...companies2].sort((a, b) => b.name.length - a.name.length)) {
+      const en = c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const ea = c.abbreviation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`\\b${en}\\b`, 'i').test(content) || new RegExp(`\\b${ea}\\b`, 'i').test(content)) {
+        noteCompanyId = c.id; break;
+      }
+    }
+
+    // 3. Create task
     const task = await get().createTask({
       title: parsed.title || content.slice(0, 60),
       description: parsed.description || undefined,
       status: 'open',
       category: 'work',
       priority: 'medium',
+      company_id: noteCompanyId,
     });
 
     // 3. Save note with task reference
@@ -289,6 +301,22 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     });
     const parsed = await res.json();
 
+    // Detect company from content
+    const companies = get().companies;
+    let detectedCompanyId: string | undefined;
+    if (companies.length) {
+      const sorted = [...companies].sort((a, b) => b.name.length - a.name.length);
+      for (const c of sorted) {
+        const escapedName = c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedAbbr = c.abbreviation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`\\b${escapedName}\\b`, 'i').test(content) ||
+            new RegExp(`\\b${escapedAbbr}\\b`, 'i').test(content)) {
+          detectedCompanyId = c.id;
+          break;
+        }
+      }
+    }
+
     // Create task
     const task = await get().createTask({
       title: parsed.title || content.slice(0, 60),
@@ -296,6 +324,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       status: 'open',
       category: 'work',
       priority: 'medium',
+      company_id: detectedCompanyId,
     });
 
     // Link note to task
