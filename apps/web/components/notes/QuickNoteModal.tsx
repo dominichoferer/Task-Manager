@@ -59,7 +59,8 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
       onSaved?.();
       setTimeout(() => { onClose(); setSaved(null); }, 1600);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : String(err));
+      const e = err as { message?: string; details?: string };
+      setSaveError(e?.message ?? e?.details ?? JSON.stringify(err));
     } finally {
       setSaving(null);
     }
@@ -75,7 +76,8 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
       onSaved?.();
       setTimeout(() => { onClose(); setSaved(null); }, 1800);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : String(err));
+      const e = err as { message?: string; details?: string };
+      setSaveError(e?.message ?? e?.details ?? JSON.stringify(err));
     } finally {
       setSaving(null);
     }

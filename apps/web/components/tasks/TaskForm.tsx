@@ -158,7 +158,8 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
 
       onSuccess?.();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : String(err));
+      const e = err as { message?: string; details?: string; code?: string };
+      setSaveError(e?.message ?? e?.details ?? JSON.stringify(err));
     } finally {
       setSaving(false);
     }
