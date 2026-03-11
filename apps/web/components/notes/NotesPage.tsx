@@ -62,7 +62,10 @@ export function NotesPage() {
             className="group rounded-xl border border-theme bg-surface p-4 space-y-3 animate-fade-in"
           >
             {/* Original note text */}
-            <p className="text-sm c-text whitespace-pre-wrap leading-relaxed">{note.content}</p>
+            <div
+              className="text-sm c-text leading-relaxed note-editor"
+              dangerouslySetInnerHTML={{ __html: note.content }}
+            />
 
             {/* Converted task */}
             {note.task && (
