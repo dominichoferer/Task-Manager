@@ -3,15 +3,17 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { NotebookPen, Trash2, ArrowRight, Plus, Pencil } from 'lucide-react';
+import { NotebookPen, Trash2, ArrowRight, Plus, Pencil, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTaskStore } from '@/store/useTaskStore';
 import type { QuickNote } from '@/store/useTaskStore';
 import { QuickNoteModal } from './QuickNoteModal';
+import { MemoUploadModal } from './MemoUploadModal';
 
 export function NotesPage() {
   const { quickNotes, fetchQuickNotes, deleteQuickNote } = useTaskStore();
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
+  const [memoUploadOpen, setMemoUploadOpen] = useState(false);
   const [editNote, setEditNote] = useState<QuickNote | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,10 +32,16 @@ export function NotesPage() {
           <h1 className="text-2xl font-bold c-text">Notizen</h1>
           <p className="c-muted mt-1 text-sm">Schnell erfasste Gedanken als Aufgaben</p>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => setQuickNoteOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Neue Notiz
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => setMemoUploadOpen(true)}>
+            <Upload className="h-4 w-4" />
+            Dokument
+          </Button>
+          <Button size="sm" className="gap-2" onClick={() => setQuickNoteOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Neue Notiz
+          </Button>
+        </div>
       </div>
 
       {loading && (
@@ -125,6 +133,13 @@ export function NotesPage() {
       <QuickNoteModal
         open={quickNoteOpen}
         onClose={() => setQuickNoteOpen(false)}
+        onSaved={() => fetchQuickNotes()}
+      />
+
+      {/* Memo upload modal */}
+      <MemoUploadModal
+        open={memoUploadOpen}
+        onClose={() => setMemoUploadOpen(false)}
         onSaved={() => fetchQuickNotes()}
       />
 

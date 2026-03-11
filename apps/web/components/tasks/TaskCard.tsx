@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip, ChevronDown } from 'lucide-react';
+import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip, ChevronDown, AlignLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Task, TaskAttachment } from '@/store/useTaskStore';
@@ -113,14 +113,19 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
           className={cn('flex items-start justify-between gap-2', task.description && 'cursor-pointer')}
           onClick={() => task.description && setDescExpanded((v) => !v)}
         >
-          <h3
-            className={cn(
-              'text-sm font-medium leading-5',
-              isDone ? 'line-through c-faint' : 'c-text'
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3
+              className={cn(
+                'text-sm font-medium leading-5',
+                isDone ? 'line-through c-faint' : 'c-text'
+              )}
+            >
+              {task.title}
+            </h3>
+            {task.description && (
+              <AlignLeft className={cn('h-3.5 w-3.5 flex-shrink-0 transition-colors', descExpanded ? 'text-indigo-400' : 'c-faint')} />
             )}
-          >
-            {task.title}
-          </h3>
+          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Sparkles, Loader2, Wand2, List, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { Sparkles, Loader2, Wand2, List, Paperclip, X, FileText, Image as ImageIcon, PenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +31,7 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const [aiLoading, setAiLoading] = useState(false);
+  const [titleImproveLoading, setTitleImproveLoading] = useState(false);
   const [expandLoading, setExpandLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -62,6 +63,24 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
       // silent fail
     } finally {
       setAiLoading(false);
+    }
+  }
+
+  async function handleImproveTitle() {
+    if (!title.trim()) return;
+    setTitleImproveLoading(true);
+    try {
+      const res = await fetch('/api/ai/improve-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      const data = await res.json();
+      if (data.title) setTitle(data.title);
+    } catch {
+      // silent fail
+    } finally {
+      setTitleImproveLoading(false);
     }
   }
 
@@ -184,7 +203,20 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Title with AI */}
       <div className="space-y-1.5">
-        <Label htmlFor="title">Aufgabe</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="title">Aufgabe</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={handleImproveTitle}
+            disabled={titleImproveLoading || !title.trim()}
+            className="h-6 text-xs gap-1 text-white/50 hover:text-white"
+          >
+            {titleImproveLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <PenLine className="h-3 w-3" />}
+            Ausformulieren
+          </Button>
+        </div>
         <div className="relative">
           <Input
             id="title"

@@ -116,7 +116,7 @@ export function QuickNoteModal({ open, onClose, onSaved, editNote }: QuickNoteMo
     setSaving('task');
     setSaveError(null);
     try {
-      const { task } = await saveQuickNote(getPlainText());
+      const { task } = await saveQuickNote(getHtml(), getPlainText());
       setSaved({ type: 'task', title: task.title });
       onSaved?.();
       setTimeout(() => { onClose(); setSaved(null); }, 1800);

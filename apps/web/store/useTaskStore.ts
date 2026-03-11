@@ -81,7 +81,7 @@ interface TaskStore {
   uploadAttachment: (taskId: string, file: File) => Promise<TaskAttachment>;
 
   fetchQuickNotes: () => Promise<void>;
-  saveQuickNote: (content: string) => Promise<{ note: QuickNote; task: Task }>;
+  saveQuickNote: (htmlContent: string, plainText: string) => Promise<{ note: QuickNote; task: Task }>;
   saveQuickNoteOnly: (content: string) => Promise<QuickNote>;
   updateQuickNote: (id: string, content: string) => Promise<void>;
   convertNoteToTask: (noteId: string, content: string) => Promise<Task>;
@@ -233,12 +233,12 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ quickNotes: data ?? [] });
   },
 
-  saveQuickNote: async (content) => {
-    // 1. Parse with AI
+  saveQuickNote: async (htmlContent, plainText) => {
+    // 1. Parse with AI (plain text for accuracy)
     const res = await fetch('/api/ai/parse-note', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content: plainText }),
     });
     const parsed = await res.json();
 
@@ -248,14 +248,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     for (const c of [...companies2].sort((a, b) => b.name.length - a.name.length)) {
       const en = c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const ea = c.abbreviation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      if (new RegExp(`\\b${en}\\b`, 'i').test(content) || new RegExp(`\\b${ea}\\b`, 'i').test(content)) {
+      if (new RegExp(`\\b${en}\\b`, 'i').test(plainText) || new RegExp(`\\b${ea}\\b`, 'i').test(plainText)) {
         noteCompanyId = c.id; break;
       }
     }
 
     // 3. Create task
     const task = await get().createTask({
-      title: parsed.title || content.slice(0, 60),
+      title: parsed.title || plainText.slice(0, 60),
       description: parsed.description || undefined,
       status: 'open',
       category: 'work',
@@ -263,12 +263,12 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       company_id: noteCompanyId,
     });
 
-    // 3. Save note with task reference
+    // 4. Save note with HTML content + task reference
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from('quick_notes')
-      .insert({ content, task_id: task.id, user_id: user?.id })
+      .insert({ content: htmlContent, task_id: task.id, user_id: user?.id })
       .select()
       .single();
     if (error) throw error;
