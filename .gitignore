@@ -20,6 +20,9 @@ build
 # Tauri
 apps/desktop/src-tauri/target
 
+# Supabase
+supabase/.temp/
+
 # Misc
 .DS_Store
 *.pem
