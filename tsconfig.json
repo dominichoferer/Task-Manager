@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@task-manager/ui": ["./packages/ui/src/index.ts"],
+      "@task-manager/core": ["./packages/core/src/index.ts"],
+      "@task-manager/ai": ["./packages/ai/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules"]
+}

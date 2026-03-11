@@ -1,0 +1,93 @@
+'use client';
+
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { TaskCard } from './TaskCard';
+import { TaskForm } from './TaskForm';
+import { useTaskStore, type Task } from '@/store/useTaskStore';
+
+export function TaskList() {
+  const { getFilteredTasks, loading } = useTaskStore();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+
+  const tasks = getFilteredTasks();
+  const openTasks = tasks.filter((t) => t.status !== 'done');
+  const doneTasks = tasks.filter((t) => t.status === 'done');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-white/40">
+            {openTasks.length} offen · {doneTasks.length} erledigt
+          </p>
+        </div>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Neue Aufgabe
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Neue Aufgabe</DialogTitle>
+            </DialogHeader>
+            <TaskForm onSuccess={() => setCreateOpen(false)} />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Open tasks */}
+      {openTasks.length === 0 && doneTasks.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+            <Plus className="h-8 w-8 text-white/20" />
+          </div>
+          <p className="text-white/40 text-sm">Keine Aufgaben vorhanden</p>
+          <p className="text-white/20 text-xs mt-1">Erstelle deine erste Aufgabe</p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {openTasks.map((task) => (
+          <TaskCard key={task.id} task={task} onEdit={(t) => setEditTask(t)} />
+        ))}
+      </div>
+
+      {/* Done tasks */}
+      {doneTasks.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-white/30 uppercase tracking-wider">Erledigt</p>
+          {doneTasks.map((task) => (
+            <TaskCard key={task.id} task={task} onEdit={(t) => setEditTask(t)} />
+          ))}
+        </div>
+      )}
+
+      {/* Edit dialog */}
+      <Dialog open={!!editTask} onOpenChange={(o) => !o && setEditTask(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aufgabe bearbeiten</DialogTitle>
+          </DialogHeader>
+          {editTask && (
+            <TaskForm editTask={editTask} onSuccess={() => setEditTask(null)} />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
