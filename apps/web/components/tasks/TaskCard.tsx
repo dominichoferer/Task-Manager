@@ -23,9 +23,9 @@ function formatDueDate(dateStr: string): { label: string; urgent: boolean } {
 }
 
 const priorityColors = {
-  high: 'bg-red-500/20 border-red-500/40 text-red-300',
-  medium: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300',
-  low: 'bg-green-500/20 border-green-500/40 text-green-300',
+  high: 'bg-red-500 border-red-600 text-white',
+  medium: 'bg-amber-400 border-amber-500 text-white',
+  low: 'bg-green-500 border-green-600 text-white',
 };
 
 function DescriptionRenderer({ text }: { text: string }) {
@@ -155,11 +155,9 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
         <div className="mt-2 flex items-center flex-wrap gap-2">
           {task.company && (
             <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-white"
               style={{
-                backgroundColor: task.company.color + '25',
-                border: `1px solid ${task.company.color}50`,
-                color: task.company.color,
+                backgroundColor: task.company.color,
               }}
             >
               <Building2 className="h-3 w-3" />

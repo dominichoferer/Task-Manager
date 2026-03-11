@@ -89,3 +89,32 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+
+/* Note editor (contentEditable) */
+.note-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--c-faint);
+  pointer-events: none;
+}
+.note-editor ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+  margin: 0.25rem 0;
+}
+.note-editor ol {
+  list-style: decimal;
+  padding-left: 1.4rem;
+  margin: 0.25rem 0;
+}
+.note-editor li {
+  margin: 0.1rem 0;
+}
+.note-editor h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.2rem;
+  color: var(--c-fg);
+}
+.note-editor b, .note-editor strong { font-weight: 700; }
+.note-editor i, .note-editor em { font-style: italic; }
+.note-editor u { text-decoration: underline; }
