@@ -84,6 +84,7 @@ interface TaskStore {
   saveQuickNote: (content: string) => Promise<{ note: QuickNote; task: Task }>;
   saveQuickNoteOnly: (content: string) => Promise<QuickNote>;
   updateQuickNote: (id: string, content: string) => Promise<void>;
+  convertNoteToTask: (noteId: string, content: string) => Promise<Task>;
   deleteQuickNote: (id: string) => Promise<void>;
 
   createCompany: (input: { name: string; abbreviation: string; color: string }) => Promise<void>;
@@ -277,6 +278,33 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const note: QuickNote = { ...data };
     set((s) => ({ quickNotes: [note, ...s.quickNotes] }));
     return note;
+  },
+
+  convertNoteToTask: async (noteId, content) => {
+    // Parse with AI
+    const res = await fetch('/api/ai/parse-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const parsed = await res.json();
+
+    // Create task
+    const task = await get().createTask({
+      title: parsed.title || content.slice(0, 60),
+      description: parsed.description || undefined,
+      status: 'open',
+      category: 'work',
+      priority: 'medium',
+    });
+
+    // Link note to task
+    const supabase = createClient();
+    await supabase.from('quick_notes').update({ task_id: task.id }).eq('id', noteId);
+    set((s) => ({
+      quickNotes: s.quickNotes.map((n) => (n.id === noteId ? { ...n, task_id: task.id, task } : n)),
+    }));
+    return task;
   },
 
   updateQuickNote: async (id, content) => {

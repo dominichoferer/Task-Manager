@@ -109,7 +109,10 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
+        <div
+          className={cn('flex items-start justify-between gap-2', task.description && 'cursor-pointer')}
+          onClick={() => task.description && setDescExpanded((v) => !v)}
+        >
           <h3
             className={cn(
               'text-sm font-medium leading-5',
@@ -121,14 +124,14 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
 
           {/* Actions */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(task)}>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
               className="h-7 w-7 hover:text-red-400"
-              onClick={handleDelete}
+              onClick={(e) => { e.stopPropagation(); handleDelete(); }}
               disabled={deleting}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -136,20 +139,9 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
           </div>
         </div>
 
-        {task.description && (
-          <div className="mt-1">
-            {descExpanded ? (
-              <DescriptionRenderer text={task.description} />
-            ) : (
-              <p className="text-xs c-muted line-clamp-2">{task.description.replace(/^- /gm, '• ').replace(/\n/g, ' ')}</p>
-            )}
-            <button
-              onClick={() => setDescExpanded((v) => !v)}
-              className="mt-1 flex items-center gap-0.5 text-xs c-faint hover:c-muted transition-colors"
-            >
-              <ChevronDown className={cn('h-3 w-3 transition-transform', descExpanded && 'rotate-180')} />
-              {descExpanded ? 'Weniger' : 'Mehr'}
-            </button>
+        {task.description && descExpanded && (
+          <div className="mt-2">
+            <DescriptionRenderer text={task.description} />
           </div>
         )}
 

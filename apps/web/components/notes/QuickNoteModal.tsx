@@ -17,7 +17,7 @@ interface QuickNoteModalProps {
 }
 
 export function QuickNoteModal({ open, onClose, onSaved, editNote }: QuickNoteModalProps) {
-  const { saveQuickNoteOnly, saveQuickNote, updateQuickNote } = useTaskStore();
+  const { saveQuickNoteOnly, saveQuickNote, updateQuickNote, convertNoteToTask } = useTaskStore();
   const [saving, setSaving] = useState<'note' | 'task' | 'update' | null>(null);
   const [saved, setSaved] = useState<{ type: 'note' | 'task' | 'update'; title?: string } | null>(null);
   const [isEmpty, setIsEmpty] = useState(true);
@@ -25,6 +25,7 @@ export function QuickNoteModal({ open, onClose, onSaved, editNote }: QuickNoteMo
   const editorRef = useRef<HTMLDivElement>(null);
 
   const isEdit = !!editNote;
+  const canConvert = isEdit && !editNote?.task_id;
 
   useEffect(() => {
     if (open) {
@@ -66,6 +67,25 @@ export function QuickNoteModal({ open, onClose, onSaved, editNote }: QuickNoteMo
       setSaved({ type: 'update' });
       onSaved?.();
       setTimeout(() => { onClose(); setSaved(null); }, 1200);
+    } catch (err) {
+      const e = err as { message?: string; details?: string };
+      setSaveError(e?.message ?? e?.details ?? JSON.stringify(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleConvertToTask() {
+    if (!editNote || !getPlainText()) return;
+    setSaving('task');
+    setSaveError(null);
+    try {
+      // Save updated content first, then convert
+      await updateQuickNote(editNote.id, getHtml());
+      const task = await convertNoteToTask(editNote.id, getPlainText());
+      setSaved({ type: 'task', title: task.title });
+      onSaved?.();
+      setTimeout(() => { onClose(); setSaved(null); }, 1800);
     } catch (err) {
       const e = err as { message?: string; details?: string };
       setSaveError(e?.message ?? e?.details ?? JSON.stringify(err));
@@ -222,15 +242,33 @@ export function QuickNoteModal({ open, onClose, onSaved, editNote }: QuickNoteMo
             )}
             <div className="flex items-center gap-2 ml-auto">
               {isEdit ? (
-                <Button
-                  onClick={handleUpdate}
-                  disabled={!!saving || isEmpty}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  {saving === 'update' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  {saving === 'update' ? 'Speichert…' : 'Speichern'}
-                </Button>
+                <>
+                  {canConvert && (
+                    <Button
+                      onClick={handleConvertToTask}
+                      disabled={!!saving || isEmpty}
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                    >
+                      {saving === 'task' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      {saving === 'task' ? 'KI verarbeitet…' : 'Als Aufgabe'}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleUpdate}
+                    disabled={!!saving || isEmpty}
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    {saving === 'update' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {saving === 'update' ? 'Speichert…' : 'Speichern'}
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button
