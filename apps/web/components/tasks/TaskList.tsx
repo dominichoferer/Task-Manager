@@ -29,11 +29,9 @@ export function TaskList() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-white/40">
-            {openTasks.length} offen · {doneTasks.length} erledigt
-          </p>
-        </div>
+        <p className="text-sm c-muted">
+          {openTasks.length} offen · {doneTasks.length} erledigt
+        </p>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2">
@@ -50,14 +48,14 @@ export function TaskList() {
         </Dialog>
       </div>
 
-      {/* Open tasks */}
+      {/* Empty state */}
       {openTasks.length === 0 && doneTasks.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-            <Plus className="h-8 w-8 text-white/20" />
+          <div className="w-16 h-16 rounded-2xl bg-surface flex items-center justify-center mb-4">
+            <Plus className="h-8 w-8 c-faint" />
           </div>
-          <p className="text-white/40 text-sm">Keine Aufgaben vorhanden</p>
-          <p className="text-white/20 text-xs mt-1">Erstelle deine erste Aufgabe</p>
+          <p className="c-muted text-sm">Keine Aufgaben vorhanden</p>
+          <p className="c-faint text-xs mt-1">Erstelle deine erste Aufgabe</p>
         </div>
       )}
 
@@ -67,10 +65,9 @@ export function TaskList() {
         ))}
       </div>
 
-      {/* Done tasks */}
       {doneTasks.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-white/30 uppercase tracking-wider">Erledigt</p>
+          <p className="text-xs font-medium c-faint uppercase tracking-wider">Erledigt</p>
           {doneTasks.map((task) => (
             <TaskCard key={task.id} task={task} onEdit={(t) => setEditTask(t)} />
           ))}

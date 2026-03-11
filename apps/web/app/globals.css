@@ -1,38 +1,87 @@
 @import "tailwindcss";
 
-/* === Themes === */
-:root, [data-theme="nacht"] {
+/* ================================
+   THEME TOKENS
+================================ */
+:root {
   --bg: #0d0d1a;
-  --bg-topbar: rgba(13, 13, 26, 0.85);
+  --bg-topbar: rgba(13,13,26,0.85);
+  --c-fg: #ffffff;
+  --c-muted: rgba(255,255,255,0.55);
+  --c-subtle: rgba(255,255,255,0.35);
+  --c-faint: rgba(255,255,255,0.22);
+  --c-surface-xs: rgba(255,255,255,0.015);
+  --c-surface-sm: rgba(255,255,255,0.05);
+  --c-surface-md: rgba(255,255,255,0.09);
+  --c-border-sm: rgba(255,255,255,0.09);
+  --c-border-md: rgba(255,255,255,0.18);
+  --c-dialog: #12121f;
+  --c-input: rgba(255,255,255,0.06);
 }
+[data-theme="ozean"]  { --bg: #050e1c; --bg-topbar: rgba(5,14,28,0.85); }
+[data-theme="vulkan"] { --bg: #180a0a; --bg-topbar: rgba(24,10,10,0.85); }
+[data-theme="wald"]   { --bg: #071610; --bg-topbar: rgba(7,22,16,0.85); }
 
-[data-theme="ozean"] {
-  --bg: #050e1c;
-  --bg-topbar: rgba(5, 14, 28, 0.85);
+[data-theme="tag"] {
+  --bg: #f8f9fa;
+  --bg-topbar: rgba(248,249,250,0.92);
+  --c-fg: #1a1a2e;
+  --c-muted: rgba(26,26,46,0.58);
+  --c-subtle: rgba(26,26,46,0.38);
+  --c-faint: rgba(26,26,46,0.25);
+  --c-surface-xs: rgba(0,0,0,0.018);
+  --c-surface-sm: rgba(0,0,0,0.045);
+  --c-surface-md: rgba(0,0,0,0.08);
+  --c-border-sm: rgba(0,0,0,0.09);
+  --c-border-md: rgba(0,0,0,0.16);
+  --c-dialog: #ffffff;
+  --c-input: rgba(0,0,0,0.05);
 }
-
-[data-theme="vulkan"] {
-  --bg: #180a0a;
-  --bg-topbar: rgba(24, 10, 10, 0.85);
-}
-
-[data-theme="wald"] {
-  --bg: #071610;
-  --bg-topbar: rgba(7, 22, 16, 0.85);
+[data-theme="sand"] {
+  --bg: #f5f0e8;
+  --bg-topbar: rgba(245,240,232,0.92);
+  --c-fg: #2d2418;
+  --c-muted: rgba(45,36,24,0.58);
+  --c-subtle: rgba(45,36,24,0.38);
+  --c-faint: rgba(45,36,24,0.25);
+  --c-surface-xs: rgba(0,0,0,0.018);
+  --c-surface-sm: rgba(0,0,0,0.045);
+  --c-surface-md: rgba(0,0,0,0.08);
+  --c-border-sm: rgba(0,0,0,0.09);
+  --c-border-md: rgba(0,0,0,0.16);
+  --c-dialog: #faf7f2;
+  --c-input: rgba(0,0,0,0.05);
 }
 
 body {
   background: var(--bg);
-  color: #ffffff;
+  color: var(--c-fg);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ================================
+   THEME UTILITY CLASSES
+================================ */
+@layer utilities {
+  .c-text    { color: var(--c-fg) }
+  .c-muted   { color: var(--c-muted) }
+  .c-subtle  { color: var(--c-subtle) }
+  .c-faint   { color: var(--c-faint) }
+  .bg-surface    { background-color: var(--c-surface-sm) }
+  .bg-surface-xs { background-color: var(--c-surface-xs) }
+  .bg-surface-md { background-color: var(--c-surface-md) }
+  .border-theme    { border-color: var(--c-border-sm) }
+  .border-theme-md { border-color: var(--c-border-md) }
+  .bg-dialog { background-color: var(--c-dialog) }
+  .bg-input  { background-color: var(--c-input) }
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.35); }
 
 /* Animations */
 @keyframes fadeIn {

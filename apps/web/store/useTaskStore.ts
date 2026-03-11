@@ -5,13 +5,22 @@ export type TaskStatus = 'open' | 'in-progress' | 'done';
 export type TaskCategory = 'work' | 'private';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type DateFilter = 'today' | 'week' | 'month' | 'all';
-export type Theme = 'nacht' | 'ozean' | 'vulkan' | 'wald';
+export type Theme = 'nacht' | 'ozean' | 'vulkan' | 'wald' | 'tag' | 'sand';
 
 export interface TaskAttachment {
   name: string;
   url: string;
   type: string;
   size: number;
+}
+
+export interface QuickNote {
+  id: string;
+  content: string;
+  task_id: string | null;
+  user_id: string;
+  created_at: string;
+  task?: Task;
 }
 
 export interface Company {
@@ -52,6 +61,7 @@ export interface CreateTaskInput {
 interface TaskStore {
   tasks: Task[];
   companies: Company[];
+  quickNotes: QuickNote[];
   activeCategory: TaskCategory | 'all';
   activeDateFilter: DateFilter;
   theme: Theme;
@@ -69,6 +79,10 @@ interface TaskStore {
   deleteTask: (id: string) => Promise<void>;
   toggleTaskStatus: (task: Task) => Promise<void>;
   uploadAttachment: (taskId: string, file: File) => Promise<TaskAttachment>;
+
+  fetchQuickNotes: () => Promise<void>;
+  saveQuickNote: (content: string) => Promise<{ note: QuickNote; task: Task }>;
+  deleteQuickNote: (id: string) => Promise<void>;
 
   createCompany: (input: { name: string; abbreviation: string; color: string }) => Promise<void>;
   updateCompany: (id: string, input: { name?: string; abbreviation?: string; color?: string }) => Promise<void>;
@@ -109,6 +123,7 @@ function getSavedTheme(): Theme {
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   companies: [],
+  quickNotes: [],
   activeCategory: 'all',
   activeDateFilter: 'all',
   theme: 'nacht',
@@ -202,6 +217,56 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       .from('task-attachments')
       .getPublicUrl(filePath);
     return { name: file.name, url: urlData.publicUrl, type: file.type, size: file.size };
+  },
+
+  fetchQuickNotes: async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('quick_notes')
+      .select('*, task:tasks(id,title,status)')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) return;
+    set({ quickNotes: data ?? [] });
+  },
+
+  saveQuickNote: async (content) => {
+    // 1. Parse with AI
+    const res = await fetch('/api/ai/parse-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const parsed = await res.json();
+
+    // 2. Create task
+    const task = await get().createTask({
+      title: parsed.title || content.slice(0, 60),
+      description: parsed.description || undefined,
+      status: 'open',
+      category: 'work',
+      priority: 'medium',
+    });
+
+    // 3. Save note with task reference
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from('quick_notes')
+      .insert({ content, task_id: task.id, user_id: user?.id })
+      .select()
+      .single();
+    if (error) throw error;
+
+    const note: QuickNote = { ...data, task };
+    set((s) => ({ quickNotes: [note, ...s.quickNotes] }));
+    return { note, task };
+  },
+
+  deleteQuickNote: async (id) => {
+    const supabase = createClient();
+    await supabase.from('quick_notes').delete().eq('id', id);
+    set((s) => ({ quickNotes: s.quickNotes.filter((n) => n.id !== id) }));
   },
 
   createCompany: async (input) => {

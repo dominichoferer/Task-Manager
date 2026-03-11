@@ -11,9 +11,9 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const variants = {
   default: 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm',
   destructive: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
-  outline: 'border border-white/10 bg-white/5 hover:bg-white/10 text-white',
-  secondary: 'bg-white/10 text-white hover:bg-white/15',
-  ghost: 'hover:bg-white/10 text-white',
+  outline: 'border border-theme bg-surface hover:bg-surface-md c-text',
+  secondary: 'bg-surface c-text hover:bg-surface-md',
+  ghost: 'hover:bg-surface c-text',
   link: 'text-indigo-400 underline-offset-4 hover:underline',
 };
 
