@@ -83,6 +83,7 @@ interface TaskStore {
   fetchQuickNotes: () => Promise<void>;
   saveQuickNote: (content: string) => Promise<{ note: QuickNote; task: Task }>;
   saveQuickNoteOnly: (content: string) => Promise<QuickNote>;
+  updateQuickNote: (id: string, content: string) => Promise<void>;
   deleteQuickNote: (id: string) => Promise<void>;
 
   createCompany: (input: { name: string; abbreviation: string; color: string }) => Promise<void>;
@@ -276,6 +277,15 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const note: QuickNote = { ...data };
     set((s) => ({ quickNotes: [note, ...s.quickNotes] }));
     return note;
+  },
+
+  updateQuickNote: async (id, content) => {
+    const supabase = createClient();
+    const { error } = await supabase.from('quick_notes').update({ content }).eq('id', id);
+    if (error) throw error;
+    set((s) => ({
+      quickNotes: s.quickNotes.map((n) => (n.id === id ? { ...n, content } : n)),
+    }));
   },
 
   deleteQuickNote: async (id) => {

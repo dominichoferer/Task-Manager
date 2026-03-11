@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip } from 'lucide-react';
+import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Task, TaskAttachment } from '@/store/useTaskStore';
@@ -74,6 +74,7 @@ function AttachmentChip({ att }: { att: TaskAttachment }) {
 export function TaskCard({ task, onEdit }: TaskCardProps) {
   const { toggleTaskStatus, deleteTask } = useTaskStore();
   const [deleting, setDeleting] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const isDone = task.status === 'done';
   const dueInfo = task.due_date ? formatDueDate(task.due_date) : null;
@@ -137,7 +138,18 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
 
         {task.description && (
           <div className="mt-1">
-            <DescriptionRenderer text={task.description} />
+            {descExpanded ? (
+              <DescriptionRenderer text={task.description} />
+            ) : (
+              <p className="text-xs c-muted line-clamp-2">{task.description.replace(/^- /gm, '• ').replace(/\n/g, ' ')}</p>
+            )}
+            <button
+              onClick={() => setDescExpanded((v) => !v)}
+              className="mt-1 flex items-center gap-0.5 text-xs c-faint hover:c-muted transition-colors"
+            >
+              <ChevronDown className={cn('h-3 w-3 transition-transform', descExpanded && 'rotate-180')} />
+              {descExpanded ? 'Weniger' : 'Mehr'}
+            </button>
           </div>
         )}
 
