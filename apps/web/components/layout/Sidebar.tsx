@@ -34,7 +34,7 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-60 flex-shrink-0 flex flex-col border-r border-white/5 bg-white/[0.02]">
+    <aside className="w-60 flex-shrink-0 flex flex-col border-r border-white/5 bg-white/[0.02] h-full overflow-y-auto">
       {/* Logo */}
       <div className="p-6 pb-4">
         <div className="flex items-center gap-2.5">

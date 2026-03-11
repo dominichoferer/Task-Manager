@@ -3,11 +3,10 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Check, Trash2, Pencil, CalendarDays, Building2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Task } from '@/store/useTaskStore';
+import type { Task, TaskAttachment } from '@/store/useTaskStore';
 import { useTaskStore } from '@/store/useTaskStore';
 
 interface TaskCardProps {
@@ -29,12 +28,56 @@ const priorityColors = {
   low: 'bg-green-500/20 border-green-500/40 text-green-300',
 };
 
+function DescriptionRenderer({ text }: { text: string }) {
+  const lines = text.split('\n').filter((l) => l.trim() !== '');
+  const hasBullets = lines.some((l) => l.startsWith('- '));
+
+  if (!hasBullets) {
+    return <p className="text-xs text-white/40 line-clamp-3">{text}</p>;
+  }
+
+  return (
+    <ul className="space-y-0.5">
+      {lines.map((line, i) =>
+        line.startsWith('- ') ? (
+          <li key={i} className="flex items-start gap-1.5 text-xs text-white/40">
+            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-white/25 flex-shrink-0" />
+            <span>{line.slice(2)}</span>
+          </li>
+        ) : (
+          <li key={i} className="text-xs text-white/40 pl-3">{line}</li>
+        )
+      )}
+    </ul>
+  );
+}
+
+function AttachmentChip({ att }: { att: TaskAttachment }) {
+  const isImage = att.type.startsWith('image/');
+  return (
+    <a
+      href={att.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-xs text-white/50 hover:text-white/80 hover:border-white/20 transition-all max-w-[140px]"
+    >
+      {isImage ? (
+        <ImageIcon className="h-3 w-3 flex-shrink-0" />
+      ) : (
+        <FileText className="h-3 w-3 flex-shrink-0" />
+      )}
+      <span className="truncate">{att.name}</span>
+    </a>
+  );
+}
+
 export function TaskCard({ task, onEdit }: TaskCardProps) {
   const { toggleTaskStatus, deleteTask } = useTaskStore();
   const [deleting, setDeleting] = useState(false);
 
   const isDone = task.status === 'done';
   const dueInfo = task.due_date ? formatDueDate(task.due_date) : null;
+  const hasAttachments = task.attachments && task.attachments.length > 0;
 
   async function handleDelete() {
     setDeleting(true);
@@ -98,7 +141,19 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
         </div>
 
         {task.description && (
-          <p className="mt-1 text-xs text-white/40 line-clamp-2">{task.description}</p>
+          <div className="mt-1">
+            <DescriptionRenderer text={task.description} />
+          </div>
+        )}
+
+        {/* Attachments */}
+        {hasAttachments && (
+          <div className="mt-2 flex items-center gap-1 flex-wrap">
+            <Paperclip className="h-3 w-3 text-white/25 flex-shrink-0" />
+            {task.attachments.map((att, i) => (
+              <AttachmentChip key={i} att={att} />
+            ))}
+          </div>
         )}
 
         {/* Meta row */}

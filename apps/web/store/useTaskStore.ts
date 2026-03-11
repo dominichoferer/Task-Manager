@@ -5,6 +5,14 @@ export type TaskStatus = 'open' | 'in-progress' | 'done';
 export type TaskCategory = 'work' | 'private';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type DateFilter = 'today' | 'week' | 'month' | 'all';
+export type Theme = 'nacht' | 'ozean' | 'vulkan' | 'wald';
+
+export interface TaskAttachment {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+}
 
 export interface Company {
   id: string;
@@ -26,6 +34,7 @@ export interface Task {
   company_id: string | null;
   user_id: string;
   created_at: string;
+  attachments: TaskAttachment[];
   company?: Company;
 }
 
@@ -37,6 +46,7 @@ export interface CreateTaskInput {
   category?: TaskCategory;
   priority?: TaskPriority;
   company_id?: string;
+  attachments?: TaskAttachment[];
 }
 
 interface TaskStore {
@@ -44,11 +54,13 @@ interface TaskStore {
   companies: Company[];
   activeCategory: TaskCategory | 'all';
   activeDateFilter: DateFilter;
+  theme: Theme;
   loading: boolean;
   error: string | null;
 
   setActiveCategory: (cat: TaskCategory | 'all') => void;
   setActiveDateFilter: (filter: DateFilter) => void;
+  setTheme: (theme: Theme) => void;
 
   fetchTasks: () => Promise<void>;
   fetchCompanies: () => Promise<void>;
@@ -56,6 +68,7 @@ interface TaskStore {
   updateTask: (id: string, input: Partial<CreateTaskInput>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTaskStatus: (task: Task) => Promise<void>;
+  uploadAttachment: (taskId: string, file: File) => Promise<TaskAttachment>;
 
   createCompany: (input: { name: string; abbreviation: string; color: string }) => Promise<void>;
   updateCompany: (id: string, input: { name?: string; abbreviation?: string; color?: string }) => Promise<void>;
@@ -88,16 +101,30 @@ function getDateRange(filter: DateFilter): { from: Date; to: Date } | null {
   return null;
 }
 
+function getSavedTheme(): Theme {
+  if (typeof window === 'undefined') return 'nacht';
+  return (localStorage.getItem('theme') as Theme) || 'nacht';
+}
+
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   companies: [],
   activeCategory: 'all',
   activeDateFilter: 'all',
+  theme: 'nacht',
   loading: false,
   error: null,
 
   setActiveCategory: (cat) => set({ activeCategory: cat }),
   setActiveDateFilter: (filter) => set({ activeDateFilter: filter }),
+
+  setTheme: (theme) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    set({ theme });
+  },
 
   fetchTasks: async () => {
     set({ loading: true, error: null });
@@ -108,7 +135,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         .select('*, company:companies(*)')
         .order('due_date', { ascending: true });
       if (error) throw error;
-      set({ tasks: data ?? [] });
+      set({ tasks: (data ?? []).map((t) => ({ ...t, attachments: t.attachments ?? [] })) });
     } catch (e: unknown) {
       set({ error: e instanceof Error ? e.message : 'Unknown error' });
     } finally {
@@ -128,12 +155,13 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from('tasks')
-      .insert({ ...input, user_id: user?.id })
+      .insert({ ...input, attachments: input.attachments ?? [], user_id: user?.id })
       .select('*, company:companies(*)')
       .single();
     if (error) throw error;
-    set((s) => ({ tasks: [data, ...s.tasks] }));
-    return data;
+    const task = { ...data, attachments: data.attachments ?? [] };
+    set((s) => ({ tasks: [task, ...s.tasks] }));
+    return task;
   },
 
   updateTask: async (id, input) => {
@@ -145,7 +173,8 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       .select('*, company:companies(*)')
       .single();
     if (error) throw error;
-    set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? data : t)) }));
+    const task = { ...data, attachments: data.attachments ?? [] };
+    set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? task : t)) }));
   },
 
   deleteTask: async (id) => {
@@ -158,6 +187,21 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   toggleTaskStatus: async (task) => {
     const next = task.status === 'done' ? 'open' : 'done';
     await get().updateTask(task.id, { status: next });
+  },
+
+  uploadAttachment: async (taskId, file) => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `${user?.id}/${taskId}/${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage
+      .from('task-attachments')
+      .upload(filePath, file);
+    if (error) throw error;
+    const { data: urlData } = supabase.storage
+      .from('task-attachments')
+      .getPublicUrl(filePath);
+    return { name: file.name, url: urlData.publicUrl, type: file.type, size: file.size };
   },
 
   createCompany: async (input) => {
@@ -211,3 +255,5 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     return filtered;
   },
 }));
+
+export { getSavedTheme };

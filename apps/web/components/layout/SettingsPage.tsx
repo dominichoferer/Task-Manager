@@ -5,7 +5,8 @@ import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useTaskStore, type Company } from '@/store/useTaskStore';
+import { useTaskStore, type Company, type Theme } from '@/store/useTaskStore';
+import { cn } from '@/lib/utils';
 
 const PRESET_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
@@ -13,8 +14,15 @@ const PRESET_COLORS = [
   '#0ea5e9', '#3b82f6',
 ];
 
+const THEMES: { id: Theme; label: string; bg: string; accent: string; description: string }[] = [
+  { id: 'nacht', label: 'Nacht', bg: '#0d0d1a', accent: '#6366f1', description: 'Dunkles Marineblau' },
+  { id: 'ozean', label: 'Ozean', bg: '#050e1c', accent: '#3b82f6', description: 'Tiefes Meeresblau' },
+  { id: 'vulkan', label: 'Vulkan', bg: '#180a0a', accent: '#f43f5e', description: 'Warmes Dunkelrot' },
+  { id: 'wald', label: 'Wald', bg: '#071610', accent: '#22c55e', description: 'Dunkles Waldgrün' },
+];
+
 export function SettingsPage() {
-  const { companies, createCompany, updateCompany, deleteCompany } = useTaskStore();
+  const { companies, createCompany, updateCompany, deleteCompany, theme, setTheme } = useTaskStore();
   const [editId, setEditId] = useState<string | null>(null);
 
   const [newName, setNewName] = useState('');
@@ -38,16 +46,58 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-10">
       <div>
         <h1 className="text-2xl font-bold text-white">Einstellungen</h1>
-        <p className="text-white/40 mt-1 text-sm">Firmen und Farben verwalten</p>
+        <p className="text-white/40 mt-1 text-sm">Design und Firmen verwalten</p>
+      </div>
+
+      {/* Theme section */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Design</h2>
+          <p className="text-sm text-white/40 mt-0.5">Wähle ein Farbthema für die App</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTheme(t.id)}
+              className={cn(
+                'relative flex items-center gap-3 p-4 rounded-xl border transition-all text-left',
+                theme === t.id
+                  ? 'border-indigo-500/60 bg-indigo-600/10'
+                  : 'border-white/10 bg-white/5 hover:border-white/20'
+              )}
+            >
+              {/* Color preview */}
+              <div
+                className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10 relative overflow-hidden"
+                style={{ backgroundColor: t.bg }}
+              >
+                <div
+                  className="absolute bottom-1 right-1 w-3 h-3 rounded-full"
+                  style={{ backgroundColor: t.accent }}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">{t.label}</p>
+                <p className="text-xs text-white/40 truncate">{t.description}</p>
+              </div>
+              {theme === t.id && (
+                <Check className="absolute top-3 right-3 h-4 w-4 text-indigo-400" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Companies section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Firmen</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Firmen</h2>
+          </div>
           <Button size="sm" variant="outline" onClick={() => setShowForm(!showForm)} className="gap-2">
             <Plus className="h-3.5 w-3.5" />
             Firma hinzufügen
@@ -57,7 +107,7 @@ export function SettingsPage() {
         {/* Add form */}
         {showForm && (
           <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-4 animate-fade-in">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Firmenname</Label>
                 <Input
