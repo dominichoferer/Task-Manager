@@ -3,11 +3,10 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Check, Trash2, Pencil, CalendarDays, Building2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Task } from '@/store/useTaskStore';
+import type { Task, TaskAttachment } from '@/store/useTaskStore';
 import { useTaskStore } from '@/store/useTaskStore';
 
 interface TaskCardProps {
@@ -24,10 +23,53 @@ function formatDueDate(dateStr: string): { label: string; urgent: boolean } {
 }
 
 const priorityColors = {
-  high: 'bg-red-500/20 border-red-500/40 text-red-300',
-  medium: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300',
-  low: 'bg-green-500/20 border-green-500/40 text-green-300',
+  high: 'bg-red-500 border-red-600 text-white',
+  medium: 'bg-amber-400 border-amber-500 text-white',
+  low: 'bg-green-500 border-green-600 text-white',
 };
+
+function DescriptionRenderer({ text }: { text: string }) {
+  const lines = text.split('\n').filter((l) => l.trim() !== '');
+  const hasBullets = lines.some((l) => l.startsWith('- '));
+
+  if (!hasBullets) {
+    return <p className="text-xs c-muted line-clamp-3">{text}</p>;
+  }
+
+  return (
+    <ul className="space-y-0.5">
+      {lines.map((line, i) =>
+        line.startsWith('- ') ? (
+          <li key={i} className="flex items-start gap-1.5 text-xs c-muted">
+            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-surface-md flex-shrink-0" style={{ backgroundColor: 'var(--c-border-md)' }} />
+            <span>{line.slice(2)}</span>
+          </li>
+        ) : (
+          <li key={i} className="text-xs c-muted pl-3">{line}</li>
+        )
+      )}
+    </ul>
+  );
+}
+
+function AttachmentChip({ att }: { att: TaskAttachment }) {
+  const isImage = att.type.startsWith('image/');
+  return (
+    <a
+      href={att.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-surface border border-theme text-xs c-subtle hover:c-text hover:border-theme-md transition-all max-w-[140px]"
+    >
+      {isImage ? (
+        <ImageIcon className="h-3 w-3 flex-shrink-0" />
+      ) : (
+        <FileText className="h-3 w-3 flex-shrink-0" />
+      )}
+      <span className="truncate">{att.name}</span>
+    </a>
+  );
+}
 
 export function TaskCard({ task, onEdit }: TaskCardProps) {
   const { toggleTaskStatus, deleteTask } = useTaskStore();
@@ -35,6 +77,7 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
 
   const isDone = task.status === 'done';
   const dueInfo = task.due_date ? formatDueDate(task.due_date) : null;
+  const hasAttachments = task.attachments && task.attachments.length > 0;
 
   async function handleDelete() {
     setDeleting(true);
@@ -46,8 +89,8 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
       className={cn(
         'group relative flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 animate-fade-in',
         isDone
-          ? 'border-white/5 bg-white/2 opacity-60'
-          : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8'
+          ? 'border-theme bg-surface-xs opacity-60'
+          : 'border-theme bg-surface hover:border-theme-md hover:bg-surface-md'
       )}
     >
       {/* Checkbox */}
@@ -57,7 +100,7 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
           'mt-0.5 flex-shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all',
           isDone
             ? 'bg-indigo-600 border-indigo-600'
-            : 'border-white/30 hover:border-indigo-400'
+            : 'border-theme-md hover:border-indigo-400'
         )}
       >
         {isDone && <Check className="h-3 w-3 text-white" />}
@@ -69,7 +112,7 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
           <h3
             className={cn(
               'text-sm font-medium leading-5',
-              isDone ? 'line-through text-white/30' : 'text-white'
+              isDone ? 'line-through c-faint' : 'c-text'
             )}
           >
             {task.title}
@@ -77,12 +120,7 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
 
           {/* Actions */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={() => onEdit(task)}
-            >
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(task)}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
@@ -98,19 +136,28 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
         </div>
 
         {task.description && (
-          <p className="mt-1 text-xs text-white/40 line-clamp-2">{task.description}</p>
+          <div className="mt-1">
+            <DescriptionRenderer text={task.description} />
+          </div>
+        )}
+
+        {/* Attachments */}
+        {hasAttachments && (
+          <div className="mt-2 flex items-center gap-1 flex-wrap">
+            <Paperclip className="h-3 w-3 c-faint flex-shrink-0" />
+            {task.attachments.map((att, i) => (
+              <AttachmentChip key={i} att={att} />
+            ))}
+          </div>
         )}
 
         {/* Meta row */}
         <div className="mt-2 flex items-center flex-wrap gap-2">
-          {/* Company badge */}
           {task.company && (
             <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-white"
               style={{
-                backgroundColor: task.company.color + '25',
-                border: `1px solid ${task.company.color}50`,
-                color: task.company.color,
+                backgroundColor: task.company.color,
               }}
             >
               <Building2 className="h-3 w-3" />
@@ -118,12 +165,11 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
             </span>
           )}
 
-          {/* Due date */}
           {dueInfo && (
             <span
               className={cn(
                 'inline-flex items-center gap-1 text-xs',
-                dueInfo.urgent ? 'text-red-400' : 'text-white/40'
+                dueInfo.urgent ? 'text-red-400' : 'c-subtle'
               )}
             >
               <CalendarDays className="h-3 w-3" />
@@ -131,7 +177,6 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
             </span>
           )}
 
-          {/* Priority */}
           <span
             className={cn(
               'inline-flex items-center px-1.5 py-0.5 rounded text-xs border',

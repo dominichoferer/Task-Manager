@@ -2,6 +2,7 @@
   "name": "task-manager",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.9.4",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -13,6 +14,7 @@
     "type-check": "turbo run type-check"
   },
   "devDependencies": {
+    "supabase": "^2.78.1",
     "turbo": "^2.8.16",
     "typescript": "^5.4.5"
   }
