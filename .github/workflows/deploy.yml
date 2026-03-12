@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - claude/task-manager-planning-WT8ws
 
 jobs:
   deploy:
