@@ -19,7 +19,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    icon: path.join(__dirname, '../assets/icon.png'),
+    icon: path.join(__dirname, '../assets/icon.png'), // optional, falls back to Electron default if missing
     title: 'TaskFlow',
     backgroundColor: '#0d0d1a',
     show: false, // show after ready-to-show for cleaner startup
