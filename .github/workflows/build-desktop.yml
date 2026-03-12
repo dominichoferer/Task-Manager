@@ -19,17 +19,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          # no npm cache – avoids lock-file issues
 
       - name: Install dependencies
-        working-directory: apps/desktop
         run: npm install
+        working-directory: apps/desktop
 
       - name: Build DMG (x64 + arm64)
+        run: npm run build
         working-directory: apps/desktop
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false   # skip code signing
+          CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run build
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
@@ -50,14 +51,14 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        working-directory: apps/desktop
         run: npm install
+        working-directory: apps/desktop
 
       - name: Build Windows installer
+        run: npm run build:win
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run build:win
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
