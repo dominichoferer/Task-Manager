@@ -1,4 +1,4 @@
-name: Build Desktop App (DMG)
+name: Build Desktop App
 
 on:
   push:
@@ -7,36 +7,51 @@ on:
       - 'claude/**'
     paths:
       - 'apps/desktop/**'
-  workflow_dispatch: # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build-mac:
     runs-on: macos-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install electron-builder globally
-        run: npm install -g electron-builder@25.1.8
+      - name: Install electron-packager
+        run: npm install -g electron-packager@18
 
-      - name: Install app dependencies
-        run: npm install --ignore-scripts=false
+      - name: Package app
         working-directory: apps/desktop
+        run: |
+          electron-packager . TaskFlow \
+            --platform=darwin \
+            --arch=x64,arm64 \
+            --out=dist \
+            --overwrite \
+            --electron-version=33.3.1 \
+            --icon=assets/icon.png \
+            --app-bundle-id=com.taskflow.app \
+            --app-version=0.1.0
 
-      - name: Build DMG (x64 + arm64)
-        run: electron-builder --mac --x64 --arm64
-        working-directory: apps/desktop
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create DMG (x64)
+        run: |
+          hdiutil create \
+            -volname "TaskFlow" \
+            -srcfolder "apps/desktop/dist/TaskFlow-darwin-x64" \
+            -ov -format UDZO \
+            "apps/desktop/dist/TaskFlow-x64.dmg"
 
-      - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+      - name: Create DMG (arm64)
+        run: |
+          hdiutil create \
+            -volname "TaskFlow" \
+            -srcfolder "apps/desktop/dist/TaskFlow-darwin-arm64" \
+            -ov -format UDZO \
+            "apps/desktop/dist/TaskFlow-arm64.dmg"
+
+      - uses: actions/upload-artifact@v4
         with:
           name: TaskFlow-macOS
           path: apps/desktop/dist/*.dmg
@@ -45,30 +60,33 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install electron-builder globally
-        run: npm install -g electron-builder@25.1.8
+      - name: Install electron-packager
+        run: npm install -g electron-packager@18
 
-      - name: Install app dependencies
-        run: npm install --ignore-scripts=false
+      - name: Package app
         working-directory: apps/desktop
+        run: |
+          electron-packager . TaskFlow `
+            --platform=win32 `
+            --arch=x64 `
+            --out=dist `
+            --overwrite `
+            --electron-version=33.3.1 `
+            --icon=assets/icon.png `
+            --app-version=0.1.0
 
-      - name: Build Windows installer
-        run: electron-builder --win
-        working-directory: apps/desktop
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Zip Windows build
+        shell: pwsh
+        run: Compress-Archive -Path apps/desktop/dist/TaskFlow-win32-x64 -DestinationPath apps/desktop/dist/TaskFlow-Windows.zip
 
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: TaskFlow-Windows
-          path: apps/desktop/dist/*.exe
+          path: apps/desktop/dist/TaskFlow-Windows.zip
           retention-days: 30
