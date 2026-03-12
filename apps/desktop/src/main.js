@@ -33,6 +33,31 @@ function createWindow() {
     if (isDev) mainWindow.webContents.openDevTools({ mode: 'detach' });
   });
 
+  // Inject draggable title-bar region (needed because titleBarStyle: hiddenInset
+  // removes the default drag area – without this the window can barely be moved)
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.insertCSS(`
+      #electron-drag-region {
+        position: fixed;
+        top: 0;
+        left: 80px; /* leave room for macOS traffic-light buttons */
+        right: 0;
+        height: 28px;
+        -webkit-app-region: drag;
+        -webkit-user-select: none;
+        z-index: 2147483647;
+        pointer-events: auto;
+      }
+    `);
+    mainWindow.webContents.executeJavaScript(`
+      if (!document.getElementById('electron-drag-region')) {
+        const el = document.createElement('div');
+        el.id = 'electron-drag-region';
+        document.body.appendChild(el);
+      }
+    `);
+  });
+
   // Open external links in system browser instead of a new Electron window
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http')) shell.openExternal(url);
