@@ -1,4 +1,5 @@
-const { app, BrowserWindow, shell, Menu } = require('electron');
+const { app, BrowserWindow, shell, Menu, dialog } = require('electron');
+const https = require('https');
 const path = require('path');
 
 // In dev mode: TASKFLOW_URL=http://localhost:3000 npm start
@@ -114,9 +115,43 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function checkForUpdates() {
+  const options = {
+    hostname: 'api.github.com',
+    path: '/repos/dominichoferer/Task-Manager/releases/latest',
+    headers: { 'User-Agent': 'TaskFlow-Desktop' },
+  };
+  https.get(options, (res) => {
+    let data = '';
+    res.on('data', (chunk) => { data += chunk; });
+    res.on('end', () => {
+      try {
+        const release = JSON.parse(data);
+        const latestVersion = release.tag_name?.replace(/^v/, '');
+        const currentVersion = app.getVersion();
+        if (!latestVersion || latestVersion === currentVersion) return;
+        const toNum = (v) => v.split('.').reduce((acc, n, i) => acc + parseInt(n || 0) * Math.pow(1000, 2 - i), 0);
+        if (toNum(latestVersion) <= toNum(currentVersion)) return;
+        dialog.showMessageBox(mainWindow, {
+          type: 'info',
+          title: 'Update verfügbar',
+          message: `TaskFlow ${release.tag_name} ist verfügbar`,
+          detail: `Du verwendest Version ${currentVersion}.\n\nJetzt herunterladen?`,
+          buttons: ['Jetzt herunterladen', 'Später'],
+          defaultId: 0,
+          cancelId: 1,
+        }).then(({ response }) => {
+          if (response === 0) shell.openExternal(release.html_url);
+        });
+      } catch {}
+    });
+  }).on('error', () => {});
+}
+
 app.whenReady().then(() => {
   buildMenu();
   createWindow();
+  setTimeout(checkForUpdates, 5000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
