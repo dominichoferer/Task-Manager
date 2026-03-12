@@ -1,35 +1,44 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Loader2, Sparkles, X, Bold, Italic, Underline, List, ListOrdered, Type } from 'lucide-react';
+import { Loader2, Sparkles, X, Bold, Italic, Underline, List, ListOrdered, Type, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTaskStore } from '@/store/useTaskStore';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import type { QuickNote } from '@/store/useTaskStore';
 
 interface QuickNoteModalProps {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  editNote?: QuickNote | null;
 }
 
-export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) {
-  const { saveQuickNoteOnly, saveQuickNote } = useTaskStore();
-  const [saving, setSaving] = useState<'note' | 'task' | null>(null);
-  const [saved, setSaved] = useState<{ type: 'note' | 'task'; title?: string } | null>(null);
+export function QuickNoteModal({ open, onClose, onSaved, editNote }: QuickNoteModalProps) {
+  const { saveQuickNoteOnly, saveQuickNote, updateQuickNote, convertNoteToTask } = useTaskStore();
+  const [saving, setSaving] = useState<'note' | 'task' | 'update' | null>(null);
+  const [saved, setSaved] = useState<{ type: 'note' | 'task' | 'update'; title?: string } | null>(null);
   const [isEmpty, setIsEmpty] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
+  const isEdit = !!editNote;
+  const canConvert = isEdit && !editNote?.task_id;
+
   useEffect(() => {
     if (open) {
       setSaved(null);
-      setIsEmpty(true);
-      if (editorRef.current) editorRef.current.innerHTML = '';
+      setSaveError(null);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = editNote?.content ?? '';
+        const text = editorRef.current.innerText?.trim() ?? '';
+        setIsEmpty(text.length === 0);
+      }
       setTimeout(() => editorRef.current?.focus(), 50);
     }
-  }, [open]);
+  }, [open, editNote]);
 
   function execFormat(command: string, value?: string) {
     document.execCommand(command, false, value);
@@ -47,6 +56,42 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
 
   function getHtml() {
     return editorRef.current?.innerHTML ?? '';
+  }
+
+  async function handleUpdate() {
+    if (!editNote || !getPlainText()) return;
+    setSaving('update');
+    setSaveError(null);
+    try {
+      await updateQuickNote(editNote.id, getHtml());
+      setSaved({ type: 'update' });
+      onSaved?.();
+      setTimeout(() => { onClose(); setSaved(null); }, 1200);
+    } catch (err) {
+      const e = err as { message?: string; details?: string };
+      setSaveError(e?.message ?? e?.details ?? JSON.stringify(err));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleConvertToTask() {
+    if (!editNote || !getPlainText()) return;
+    setSaving('task');
+    setSaveError(null);
+    try {
+      // Save updated content first, then convert
+      await updateQuickNote(editNote.id, getHtml());
+      const task = await convertNoteToTask(editNote.id, getPlainText());
+      setSaved({ type: 'task', title: task.title });
+      onSaved?.();
+      setTimeout(() => { onClose(); setSaved(null); }, 1800);
+    } catch (err) {
+      const e = err as { message?: string; details?: string };
+      setSaveError(e?.message ?? e?.details ?? JSON.stringify(err));
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function handleSaveNote() {
@@ -71,7 +116,7 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
     setSaving('task');
     setSaveError(null);
     try {
-      const { task } = await saveQuickNote(getPlainText());
+      const { task } = await saveQuickNote(getHtml(), getPlainText());
       setSaved({ type: 'task', title: task.title });
       onSaved?.();
       setTimeout(() => { onClose(); setSaved(null); }, 1800);
@@ -87,13 +132,15 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
     if (e.key === 'Escape') { onClose(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
-      handleSaveNote();
+      isEdit ? handleUpdate() : handleSaveNote();
     }
   }
 
   if (!open) return null;
 
-  const dateStr = format(new Date(), "d. MMMM yyyy 'um' HH:mm", { locale: de });
+  const dateStr = editNote
+    ? format(new Date(editNote.created_at), "d. MMMM yyyy 'um' HH:mm", { locale: de })
+    : format(new Date(), "d. MMMM yyyy 'um' HH:mm", { locale: de });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -108,6 +155,9 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
       >
         {/* Toolbar */}
         <div className="flex items-center gap-0.5 px-3 py-2 border-b border-theme">
+          {isEdit && (
+            <span className="text-xs c-faint px-1.5 py-0.5 rounded bg-surface mr-1">Bearbeiten</span>
+          )}
           <ToolbarBtn title="Fett" onClick={() => execFormat('bold')}>
             <Bold className="h-4 w-4" />
           </ToolbarBtn>
@@ -153,10 +203,14 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
               'w-12 h-12 rounded-full flex items-center justify-center mb-3',
               saved.type === 'task' ? 'bg-indigo-500/20' : 'bg-green-500/20'
             )}>
-              <Sparkles className={cn('h-6 w-6', saved.type === 'task' ? 'text-indigo-400' : 'text-green-400')} />
+              {saved.type === 'update' ? (
+                <Check className="h-6 w-6 text-green-400" />
+              ) : (
+                <Sparkles className={cn('h-6 w-6', saved.type === 'task' ? 'text-indigo-400' : 'text-green-400')} />
+              )}
             </div>
             <p className="text-sm font-medium c-text">
-              {saved.type === 'task' ? 'Aufgabe erstellt' : 'Notiz gespeichert'}
+              {saved.type === 'task' ? 'Aufgabe erstellt' : saved.type === 'update' ? 'Notiz aktualisiert' : 'Notiz gespeichert'}
             </p>
             {saved.title && (
               <p className="text-xs c-muted mt-1 line-clamp-2 px-8 text-center">{saved.title}</p>
@@ -177,9 +231,9 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
         {/* Footer */}
         {!saved && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-theme">
-            <p className="text-xs c-faint flex items-center gap-1 hidden sm:flex">
+            <p className="text-xs c-faint items-center gap-1 hidden sm:flex">
               <Sparkles className="h-3 w-3 text-indigo-400/60" />
-              KI kann eine Aufgabe daraus erstellen
+              {isEdit ? 'Änderungen mit Strg+Enter speichern' : 'KI kann eine Aufgabe daraus erstellen'}
             </p>
             {saveError && (
               <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2 py-1 max-w-xs truncate" title={saveError}>
@@ -187,29 +241,61 @@ export function QuickNoteModal({ open, onClose, onSaved }: QuickNoteModalProps) 
               </p>
             )}
             <div className="flex items-center gap-2 ml-auto">
-              <Button
-                onClick={handleSaveNote}
-                disabled={!!saving || isEmpty}
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-              >
-                {saving === 'note' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {saving === 'note' ? 'Speichert…' : 'Speichern'}
-              </Button>
-              <Button
-                onClick={handleCreateTask}
-                disabled={!!saving || isEmpty}
-                size="sm"
-                className="gap-1.5"
-              >
-                {saving === 'task' ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                {saving === 'task' ? 'KI verarbeitet…' : 'Als Aufgabe'}
-              </Button>
+              {isEdit ? (
+                <>
+                  {canConvert && (
+                    <Button
+                      onClick={handleConvertToTask}
+                      disabled={!!saving || isEmpty}
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                    >
+                      {saving === 'task' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      {saving === 'task' ? 'KI verarbeitet…' : 'Als Aufgabe'}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleUpdate}
+                    disabled={!!saving || isEmpty}
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    {saving === 'update' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {saving === 'update' ? 'Speichert…' : 'Speichern'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleSaveNote}
+                    disabled={!!saving || isEmpty}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                  >
+                    {saving === 'note' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {saving === 'note' ? 'Speichert…' : 'Speichern'}
+                  </Button>
+                  <Button
+                    onClick={handleCreateTask}
+                    disabled={!!saving || isEmpty}
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    {saving === 'task' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    {saving === 'task' ? 'KI verarbeitet…' : 'Als Aufgabe'}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}

@@ -145,7 +145,7 @@ export default function HomePage() {
 
   const pageTitle: Record<string, string> = {
     tasks: 'Aufgaben',
-    timeline: 'Zeitleiste',
+    timeline: 'Kalender',
     notes: 'Notizen',
     settings: 'Einstellungen',
   };
@@ -165,7 +165,7 @@ export default function HomePage() {
 
   const mobileNavItems = [
     { id: 'tasks', icon: LayoutDashboard, label: 'Aufgaben' },
-    { id: 'timeline', icon: CalendarDays, label: 'Zeitleiste' },
+    { id: 'timeline', icon: CalendarDays, label: 'Kalender' },
     { id: 'notes', icon: NotebookPen, label: 'Notizen' },
     { id: 'settings', icon: Settings, label: 'Einstellungen' },
   ];

@@ -1,21 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TaskCard } from './TaskCard';
 import { TaskForm } from './TaskForm';
 import { useTaskStore, type Task } from '@/store/useTaskStore';
+import { cn } from '@/lib/utils';
 
 export function TaskList() {
-  const { getFilteredTasks, loading } = useTaskStore();
+  const { getFilteredTasks, loading, reorderTasks } = useTaskStore();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
+
+  // Drag-and-drop state
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const tasks = getFilteredTasks();
   const openTasks = tasks.filter((t) => t.status !== 'done');
   const doneTasks = tasks.filter((t) => t.status === 'done');
+
+  function handleDragStart(index: number) {
+    dragIndexRef.current = index;
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }
+
+  function handleDrop(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    const from = dragIndexRef.current;
+    if (from !== null && from !== index) {
+      reorderTasks(from, index);
+    }
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+  }
+
+  function handleDragEnd() {
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+  }
 
   if (loading) {
     return (
@@ -60,8 +89,23 @@ export function TaskList() {
       )}
 
       <div className="space-y-2">
-        {openTasks.map((task) => (
-          <TaskCard key={task.id} task={task} onEdit={(t) => setEditTask(t)} />
+        {openTasks.map((task, index) => (
+          <div
+            key={task.id}
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
+            className={cn(
+              'transition-all duration-150',
+              dragOverIndex === index && dragIndexRef.current !== index
+                ? 'translate-y-0.5 opacity-50'
+                : ''
+            )}
+          >
+            <TaskCard task={task} onEdit={(t) => setEditTask(t)} isDraggable />
+          </div>
         ))}
       </div>
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip } from 'lucide-react';
+import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip, AlignLeft, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Task, TaskAttachment } from '@/store/useTaskStore';
@@ -12,6 +12,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
+  isDraggable?: boolean;
 }
 
 function formatDueDate(dateStr: string): { label: string; urgent: boolean } {
@@ -71,9 +72,10 @@ function AttachmentChip({ att }: { att: TaskAttachment }) {
   );
 }
 
-export function TaskCard({ task, onEdit }: TaskCardProps) {
+export function TaskCard({ task, onEdit, isDraggable }: TaskCardProps) {
   const { toggleTaskStatus, deleteTask } = useTaskStore();
   const [deleting, setDeleting] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const isDone = task.status === 'done';
   const dueInfo = task.due_date ? formatDueDate(task.due_date) : null;
@@ -90,9 +92,17 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
         'group relative flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 animate-fade-in',
         isDone
           ? 'border-theme bg-surface-xs opacity-60'
-          : 'border-theme bg-surface hover:border-theme-md hover:bg-surface-md'
+          : 'border-theme bg-surface hover:border-theme-md hover:bg-surface-md',
+        isDraggable && 'cursor-default'
       )}
     >
+      {/* Drag handle */}
+      {isDraggable && (
+        <div className="mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+          <GripVertical className="h-4 w-4 c-faint" />
+        </div>
+      )}
+
       {/* Checkbox */}
       <button
         onClick={() => toggleTaskStatus(task)}
@@ -108,26 +118,34 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <h3
-            className={cn(
-              'text-sm font-medium leading-5',
-              isDone ? 'line-through c-faint' : 'c-text'
+        <div
+          className={cn('flex items-start justify-between gap-2', task.description && 'cursor-pointer')}
+          onClick={() => task.description && setDescExpanded((v) => !v)}
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3
+              className={cn(
+                'text-sm font-medium leading-5',
+                isDone ? 'line-through c-faint' : 'c-text'
+              )}
+            >
+              {task.title}
+            </h3>
+            {task.description && (
+              <AlignLeft className={cn('h-3.5 w-3.5 flex-shrink-0 transition-colors', descExpanded ? 'text-indigo-400' : 'c-faint')} />
             )}
-          >
-            {task.title}
-          </h3>
+          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(task)}>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
               className="h-7 w-7 hover:text-red-400"
-              onClick={handleDelete}
+              onClick={(e) => { e.stopPropagation(); handleDelete(); }}
               disabled={deleting}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -135,8 +153,8 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
           </div>
         </div>
 
-        {task.description && (
-          <div className="mt-1">
+        {task.description && descExpanded && (
+          <div className="mt-2">
             <DescriptionRenderer text={task.description} />
           </div>
         )}

@@ -3,19 +3,27 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { NotebookPen, Trash2, ArrowRight, Plus } from 'lucide-react';
+import { NotebookPen, Trash2, ArrowRight, Plus, Pencil, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTaskStore } from '@/store/useTaskStore';
+import type { QuickNote } from '@/store/useTaskStore';
 import { QuickNoteModal } from './QuickNoteModal';
+import { MemoUploadModal } from './MemoUploadModal';
 
 export function NotesPage() {
   const { quickNotes, fetchQuickNotes, deleteQuickNote } = useTaskStore();
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
+  const [memoUploadOpen, setMemoUploadOpen] = useState(false);
+  const [editNote, setEditNote] = useState<QuickNote | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchQuickNotes().finally(() => setLoading(false));
   }, []);
+
+  function handleEditClose() {
+    setEditNote(null);
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -24,10 +32,16 @@ export function NotesPage() {
           <h1 className="text-2xl font-bold c-text">Notizen</h1>
           <p className="c-muted mt-1 text-sm">Schnell erfasste Gedanken als Aufgaben</p>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => setQuickNoteOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Neue Notiz
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => setMemoUploadOpen(true)}>
+            <Upload className="h-4 w-4" />
+            Dokument
+          </Button>
+          <Button size="sm" className="gap-2" onClick={() => setQuickNoteOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Neue Notiz
+          </Button>
+        </div>
       </div>
 
       {loading && (
@@ -62,7 +76,10 @@ export function NotesPage() {
             className="group rounded-xl border border-theme bg-surface p-4 space-y-3 animate-fade-in"
           >
             {/* Original note text */}
-            <p className="text-sm c-text whitespace-pre-wrap leading-relaxed">{note.content}</p>
+            <div
+              className="text-sm c-text leading-relaxed note-editor"
+              dangerouslySetInnerHTML={{ __html: note.content }}
+            />
 
             {/* Converted task */}
             {note.task && (
@@ -89,23 +106,49 @@ export function NotesPage() {
               <span className="text-xs c-faint">
                 {format(new Date(note.created_at), "d. MMM, HH:mm 'Uhr'", { locale: de })}
               </span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
-                onClick={() => deleteQuickNote(note.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 hover:text-indigo-400"
+                  onClick={() => setEditNote(note)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 hover:text-red-400"
+                  onClick={() => deleteQuickNote(note.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
+      {/* New note modal */}
       <QuickNoteModal
         open={quickNoteOpen}
         onClose={() => setQuickNoteOpen(false)}
         onSaved={() => fetchQuickNotes()}
+      />
+
+      {/* Memo upload modal */}
+      <MemoUploadModal
+        open={memoUploadOpen}
+        onClose={() => setMemoUploadOpen(false)}
+        onSaved={() => fetchQuickNotes()}
+      />
+
+      {/* Edit note modal */}
+      <QuickNoteModal
+        open={!!editNote}
+        onClose={handleEditClose}
+        onSaved={() => fetchQuickNotes()}
+        editNote={editNote}
       />
     </div>
   );

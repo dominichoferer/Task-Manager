@@ -37,6 +37,7 @@ export interface Task {
   title: string;
   description: string | null;
   due_date: string | null;
+  start_date: string | null;
   status: TaskStatus;
   category: TaskCategory;
   priority: TaskPriority;
@@ -51,6 +52,7 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   due_date?: string;
+  start_date?: string;
   status?: TaskStatus;
   category?: TaskCategory;
   priority?: TaskPriority;
@@ -60,6 +62,7 @@ export interface CreateTaskInput {
 
 interface TaskStore {
   tasks: Task[];
+  taskOrder: string[]; // custom drag-drop order (task IDs)
   companies: Company[];
   quickNotes: QuickNote[];
   activeCategory: TaskCategory | 'all';
@@ -78,11 +81,14 @@ interface TaskStore {
   updateTask: (id: string, input: Partial<CreateTaskInput>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTaskStatus: (task: Task) => Promise<void>;
+  reorderTasks: (fromIndex: number, toIndex: number) => void;
   uploadAttachment: (taskId: string, file: File) => Promise<TaskAttachment>;
 
   fetchQuickNotes: () => Promise<void>;
-  saveQuickNote: (content: string) => Promise<{ note: QuickNote; task: Task }>;
+  saveQuickNote: (htmlContent: string, plainText: string) => Promise<{ note: QuickNote; task: Task }>;
   saveQuickNoteOnly: (content: string) => Promise<QuickNote>;
+  updateQuickNote: (id: string, content: string) => Promise<void>;
+  convertNoteToTask: (noteId: string, content: string) => Promise<Task>;
   deleteQuickNote: (id: string) => Promise<void>;
 
   createCompany: (input: { name: string; abbreviation: string; color: string }) => Promise<void>;
@@ -121,8 +127,14 @@ function getSavedTheme(): Theme {
   return (localStorage.getItem('theme') as Theme) || 'nacht';
 }
 
+function getSavedTaskOrder(): string[] {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem('taskOrder') || '[]'); } catch { return []; }
+}
+
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
+  taskOrder: getSavedTaskOrder(),
   companies: [],
   quickNotes: [],
   activeCategory: 'all',
@@ -205,6 +217,29 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     await get().updateTask(task.id, { status: next });
   },
 
+  reorderTasks: (fromIndex, toIndex) => {
+    const { tasks, taskOrder } = get();
+    // Build ordered list of open task IDs
+    const openIds = tasks
+      .filter((t) => t.status !== 'done')
+      .sort((a, b) => {
+        const ai = taskOrder.indexOf(a.id);
+        const bi = taskOrder.indexOf(b.id);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      })
+      .map((t) => t.id);
+    const newOrder = [...openIds];
+    const [moved] = newOrder.splice(fromIndex, 1);
+    newOrder.splice(toIndex, 0, moved);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('taskOrder', JSON.stringify(newOrder));
+    }
+    set({ taskOrder: newOrder });
+  },
+
   uploadAttachment: async (taskId, file) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -231,30 +266,42 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ quickNotes: data ?? [] });
   },
 
-  saveQuickNote: async (content) => {
-    // 1. Parse with AI
+  saveQuickNote: async (htmlContent, plainText) => {
+    // 1. Parse with AI (plain text for accuracy)
     const res = await fetch('/api/ai/parse-note', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content: plainText }),
     });
     const parsed = await res.json();
 
-    // 2. Create task
+    // 2. Detect company
+    const companies2 = get().companies;
+    let noteCompanyId: string | undefined;
+    for (const c of [...companies2].sort((a, b) => b.name.length - a.name.length)) {
+      const en = c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const ea = c.abbreviation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`\\b${en}\\b`, 'i').test(plainText) || new RegExp(`\\b${ea}\\b`, 'i').test(plainText)) {
+        noteCompanyId = c.id; break;
+      }
+    }
+
+    // 3. Create task
     const task = await get().createTask({
-      title: parsed.title || content.slice(0, 60),
+      title: parsed.title || plainText.slice(0, 60),
       description: parsed.description || undefined,
       status: 'open',
       category: 'work',
       priority: 'medium',
+      company_id: noteCompanyId,
     });
 
-    // 3. Save note with task reference
+    // 4. Save note with HTML content + task reference
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from('quick_notes')
-      .insert({ content, task_id: task.id, user_id: user?.id })
+      .insert({ content: htmlContent, task_id: task.id, user_id: user?.id })
       .select()
       .single();
     if (error) throw error;
@@ -276,6 +323,59 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const note: QuickNote = { ...data };
     set((s) => ({ quickNotes: [note, ...s.quickNotes] }));
     return note;
+  },
+
+  convertNoteToTask: async (noteId, content) => {
+    // Parse with AI
+    const res = await fetch('/api/ai/parse-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const parsed = await res.json();
+
+    // Detect company from content
+    const companies = get().companies;
+    let detectedCompanyId: string | undefined;
+    if (companies.length) {
+      const sorted = [...companies].sort((a, b) => b.name.length - a.name.length);
+      for (const c of sorted) {
+        const escapedName = c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedAbbr = c.abbreviation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`\\b${escapedName}\\b`, 'i').test(content) ||
+            new RegExp(`\\b${escapedAbbr}\\b`, 'i').test(content)) {
+          detectedCompanyId = c.id;
+          break;
+        }
+      }
+    }
+
+    // Create task
+    const task = await get().createTask({
+      title: parsed.title || content.slice(0, 60),
+      description: parsed.description || undefined,
+      status: 'open',
+      category: 'work',
+      priority: 'medium',
+      company_id: detectedCompanyId,
+    });
+
+    // Link note to task
+    const supabase = createClient();
+    await supabase.from('quick_notes').update({ task_id: task.id }).eq('id', noteId);
+    set((s) => ({
+      quickNotes: s.quickNotes.map((n) => (n.id === noteId ? { ...n, task_id: task.id, task } : n)),
+    }));
+    return task;
+  },
+
+  updateQuickNote: async (id, content) => {
+    const supabase = createClient();
+    const { error } = await supabase.from('quick_notes').update({ content }).eq('id', id);
+    if (error) throw error;
+    set((s) => ({
+      quickNotes: s.quickNotes.map((n) => (n.id === id ? { ...n, content } : n)),
+    }));
   },
 
   deleteQuickNote: async (id) => {
@@ -316,7 +416,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   getFilteredTasks: () => {
-    const { tasks, activeCategory, activeDateFilter } = get();
+    const { tasks, activeCategory, activeDateFilter, taskOrder } = get();
     let filtered = tasks;
 
     if (activeCategory !== 'all') {
@@ -329,6 +429,21 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         if (!t.due_date) return false;
         const d = new Date(t.due_date);
         return d >= range.from && d <= range.to;
+      });
+    }
+
+    // Apply custom drag-drop order for open tasks
+    if (taskOrder.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        if (a.status === 'done' && b.status !== 'done') return 1;
+        if (a.status !== 'done' && b.status === 'done') return -1;
+        if (a.status === 'done' && b.status === 'done') return 0;
+        const ai = taskOrder.indexOf(a.id);
+        const bi = taskOrder.indexOf(b.id);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
       });
     }
 

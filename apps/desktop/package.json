@@ -4,6 +4,8 @@
   "description": "TaskFlow – Dein smarter Task Manager",
   "main": "src/main.js",
   "scripts": {
+    "dev": "TASKFLOW_URL=http://localhost:3000 electron .",
+    "dev:win": "set TASKFLOW_URL=http://localhost:3000 && electron .",
     "start": "electron .",
     "build": "electron-builder --mac --x64 --arm64",
     "build:win": "electron-builder --win",
@@ -15,6 +17,10 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns",
@@ -24,6 +30,14 @@
           "arch": ["x64", "arm64"]
         }
       ]
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": "nsis"
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": "AppImage"
     },
     "dmg": {
       "title": "TaskFlow ${version}",

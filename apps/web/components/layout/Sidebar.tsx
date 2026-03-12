@@ -22,7 +22,7 @@ export function Sidebar({ activePage, onPageChange, onQuickNote }: SidebarProps)
 
   const navItems = [
     { id: 'tasks', icon: LayoutDashboard, label: 'Aufgaben' },
-    { id: 'timeline', icon: CalendarDays, label: 'Zeitleiste' },
+    { id: 'timeline', icon: CalendarDays, label: 'Kalender' },
     { id: 'notes', icon: NotebookPen, label: 'Notizen' },
     { id: 'settings', icon: Settings, label: 'Einstellungen' },
   ];
