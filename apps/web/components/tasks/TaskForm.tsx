@@ -23,6 +23,10 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
   const [dueDate, setDueDate] = useState(
     editTask?.due_date ? editTask.due_date.split('T')[0] : ''
   );
+  const [startDate, setStartDate] = useState(
+    editTask?.start_date ? editTask.start_date.split('T')[0] : ''
+  );
+  const [activePeriod, setActivePeriod] = useState<'today' | 'week' | 'month' | null>(null);
   const [status, setStatus] = useState(editTask?.status ?? 'open');
   const [category, setCategory] = useState(editTask?.category ?? 'work');
   const [priority, setPriority] = useState(editTask?.priority ?? 'medium');
@@ -39,6 +43,27 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
   const titleRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function applyPeriod(period: 'today' | 'week' | 'month') {
+    const now = new Date();
+    let start: Date;
+    let end: Date;
+    if (period === 'today') {
+      start = new Date(now); start.setHours(0, 0, 0, 0);
+      end = new Date(now); end.setHours(23, 59, 59, 999);
+    } else if (period === 'week') {
+      const day = now.getDay();
+      const diff = (day === 0 ? -6 : 1) - day;
+      start = new Date(now); start.setDate(now.getDate() + diff); start.setHours(0, 0, 0, 0);
+      end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999);
+    } else {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+    setStartDate(start.toISOString().split('T')[0]);
+    setDueDate(end.toISOString().split('T')[0]);
+    setActivePeriod(period);
+  }
 
   // AI: Extract date from title
   async function handleAiTitleBlur() {
@@ -162,6 +187,7 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
         title: title.trim(),
         description: description.trim() || undefined,
         due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
+        start_date: startDate ? new Date(startDate).toISOString() : undefined,
         status: status as CreateTaskInput['status'],
         category: category as CreateTaskInput['category'],
         priority: priority as CreateTaskInput['priority'],
@@ -357,6 +383,40 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
         )}
       </div>
 
+      {/* Period planning */}
+      <div className="space-y-1.5">
+        <Label>Zeitraum</Label>
+        <div className="flex gap-2">
+          {([
+            { id: 'today', label: 'Heute' },
+            { id: 'week', label: 'Diese Woche' },
+            { id: 'month', label: 'Dieser Monat' },
+          ] as const).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                if (activePeriod === p.id) {
+                  setActivePeriod(null);
+                  setStartDate('');
+                  setDueDate('');
+                } else {
+                  applyPeriod(p.id);
+                }
+              }}
+              className={cn(
+                'flex-1 px-2 py-1.5 rounded-lg text-xs border transition-all',
+                activePeriod === p.id
+                  ? 'border-indigo-500/60 bg-indigo-500/20 text-indigo-300 font-medium'
+                  : 'border-white/10 bg-white/5 text-white/50 hover:text-white/80 hover:bg-white/10'
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Due date */}
       <div className="space-y-1.5">
         <Label htmlFor="due_date">Fälligkeitsdatum</Label>
@@ -364,7 +424,7 @@ export function TaskForm({ editTask, onSuccess }: TaskFormProps) {
           id="due_date"
           type="date"
           value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          onChange={(e) => { setDueDate(e.target.value); setActivePeriod(null); }}
           className="[color-scheme:dark]"
         />
       </div>

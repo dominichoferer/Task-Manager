@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip, ChevronDown, AlignLeft } from 'lucide-react';
+import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip, AlignLeft, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Task, TaskAttachment } from '@/store/useTaskStore';
@@ -12,6 +12,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
+  isDraggable?: boolean;
 }
 
 function formatDueDate(dateStr: string): { label: string; urgent: boolean } {
@@ -71,7 +72,7 @@ function AttachmentChip({ att }: { att: TaskAttachment }) {
   );
 }
 
-export function TaskCard({ task, onEdit }: TaskCardProps) {
+export function TaskCard({ task, onEdit, isDraggable }: TaskCardProps) {
   const { toggleTaskStatus, deleteTask } = useTaskStore();
   const [deleting, setDeleting] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -91,9 +92,17 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
         'group relative flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 animate-fade-in',
         isDone
           ? 'border-theme bg-surface-xs opacity-60'
-          : 'border-theme bg-surface hover:border-theme-md hover:bg-surface-md'
+          : 'border-theme bg-surface hover:border-theme-md hover:bg-surface-md',
+        isDraggable && 'cursor-default'
       )}
     >
+      {/* Drag handle */}
+      {isDraggable && (
+        <div className="mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+          <GripVertical className="h-4 w-4 c-faint" />
+        </div>
+      )}
+
       {/* Checkbox */}
       <button
         onClick={() => toggleTaskStatus(task)}

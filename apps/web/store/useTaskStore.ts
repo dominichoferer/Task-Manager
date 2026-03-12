@@ -37,6 +37,7 @@ export interface Task {
   title: string;
   description: string | null;
   due_date: string | null;
+  start_date: string | null;
   status: TaskStatus;
   category: TaskCategory;
   priority: TaskPriority;
@@ -51,6 +52,7 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   due_date?: string;
+  start_date?: string;
   status?: TaskStatus;
   category?: TaskCategory;
   priority?: TaskPriority;
@@ -60,6 +62,7 @@ export interface CreateTaskInput {
 
 interface TaskStore {
   tasks: Task[];
+  taskOrder: string[]; // custom drag-drop order (task IDs)
   companies: Company[];
   quickNotes: QuickNote[];
   activeCategory: TaskCategory | 'all';
@@ -78,6 +81,7 @@ interface TaskStore {
   updateTask: (id: string, input: Partial<CreateTaskInput>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTaskStatus: (task: Task) => Promise<void>;
+  reorderTasks: (fromIndex: number, toIndex: number) => void;
   uploadAttachment: (taskId: string, file: File) => Promise<TaskAttachment>;
 
   fetchQuickNotes: () => Promise<void>;
@@ -123,8 +127,14 @@ function getSavedTheme(): Theme {
   return (localStorage.getItem('theme') as Theme) || 'nacht';
 }
 
+function getSavedTaskOrder(): string[] {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem('taskOrder') || '[]'); } catch { return []; }
+}
+
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
+  taskOrder: getSavedTaskOrder(),
   companies: [],
   quickNotes: [],
   activeCategory: 'all',
@@ -205,6 +215,29 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   toggleTaskStatus: async (task) => {
     const next = task.status === 'done' ? 'open' : 'done';
     await get().updateTask(task.id, { status: next });
+  },
+
+  reorderTasks: (fromIndex, toIndex) => {
+    const { tasks, taskOrder } = get();
+    // Build ordered list of open task IDs
+    const openIds = tasks
+      .filter((t) => t.status !== 'done')
+      .sort((a, b) => {
+        const ai = taskOrder.indexOf(a.id);
+        const bi = taskOrder.indexOf(b.id);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      })
+      .map((t) => t.id);
+    const newOrder = [...openIds];
+    const [moved] = newOrder.splice(fromIndex, 1);
+    newOrder.splice(toIndex, 0, moved);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('taskOrder', JSON.stringify(newOrder));
+    }
+    set({ taskOrder: newOrder });
   },
 
   uploadAttachment: async (taskId, file) => {
@@ -383,7 +416,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   getFilteredTasks: () => {
-    const { tasks, activeCategory, activeDateFilter } = get();
+    const { tasks, activeCategory, activeDateFilter, taskOrder } = get();
     let filtered = tasks;
 
     if (activeCategory !== 'all') {
@@ -396,6 +429,21 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         if (!t.due_date) return false;
         const d = new Date(t.due_date);
         return d >= range.from && d <= range.to;
+      });
+    }
+
+    // Apply custom drag-drop order for open tasks
+    if (taskOrder.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        if (a.status === 'done' && b.status !== 'done') return 1;
+        if (a.status !== 'done' && b.status === 'done') return -1;
+        if (a.status === 'done' && b.status === 'done') return 0;
+        const ai = taskOrder.indexOf(a.id);
+        const bi = taskOrder.indexOf(b.id);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
       });
     }
 
