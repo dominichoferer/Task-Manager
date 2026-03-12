@@ -21,15 +21,15 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies (workspace root)
-        run: npm install --ignore-scripts=false
+      - name: Install electron-builder globally
+        run: npm install -g electron-builder@25.1.8
 
-      - name: Fix app-builder binary permissions
-        run: |
-          find node_modules -name "app-builder_mac" -o -name "app-builder_arm64" | xargs chmod +x 2>/dev/null || true
+      - name: Install app dependencies
+        run: npm install --ignore-scripts=false
+        working-directory: apps/desktop
 
       - name: Build DMG (x64 + arm64)
-        run: npm run build
+        run: electron-builder --mac --x64 --arm64
         working-directory: apps/desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -53,11 +53,15 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies (workspace root)
+      - name: Install electron-builder globally
+        run: npm install -g electron-builder@25.1.8
+
+      - name: Install app dependencies
         run: npm install --ignore-scripts=false
+        working-directory: apps/desktop
 
       - name: Build Windows installer
-        run: npm run build:win
+        run: electron-builder --win
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
