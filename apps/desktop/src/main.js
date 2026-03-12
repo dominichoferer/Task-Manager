@@ -3,7 +3,7 @@ const path = require('path');
 
 // In dev mode: TASKFLOW_URL=http://localhost:3000 npm start
 // In production: set TASKFLOW_URL to your deployed Vercel URL
-const APP_URL = process.env.TASKFLOW_URL || 'http://localhost:3000';
+const APP_URL = process.env.TASKFLOW_URL || 'https://task-manager-nine-topaz.vercel.app';
 const isDev = APP_URL.includes('localhost');
 
 let mainWindow;
