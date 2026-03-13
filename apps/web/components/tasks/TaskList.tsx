@@ -1,56 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TaskCard } from './TaskCard';
 import { TaskForm } from './TaskForm';
 import { useTaskStore, type Task } from '@/store/useTaskStore';
-import { cn } from '@/lib/utils';
 
 export function TaskList() {
   const { getFilteredTasks, loading, reorderTasks } = useTaskStore();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
 
-  // Drag-and-drop state – both as useState so re-renders fire correctly
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
   const tasks = getFilteredTasks();
   const openTasks = tasks.filter((t) => t.status !== 'done');
   const doneTasks = tasks.filter((t) => t.status === 'done');
-
-  function handleDragStart(e: React.DragEvent, index: number) {
-    // dataTransfer.setData is required by browsers to activate drag
-    e.dataTransfer.setData('text/plain', String(index));
-    e.dataTransfer.effectAllowed = 'move';
-    setDragIndex(index);
-  }
-
-  function handleDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverIndex !== index) setDragOverIndex(index);
-  }
-
-  function handleDrop(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    e.stopPropagation();
-    const from = dragIndex;
-    if (from !== null && from !== index) {
-      reorderTasks(from, index);
-    }
-    setDragIndex(null);
-    setDragOverIndex(null);
-  }
-
-  function handleDragEnd() {
-    setDragIndex(null);
-    setDragOverIndex(null);
-  }
 
   if (loading) {
     return (
@@ -94,29 +59,36 @@ export function TaskList() {
         </div>
       )}
 
+      {/* Open tasks with reorder arrows */}
       <div className="space-y-2">
         {openTasks.map((task, index) => (
-          <div
-            key={task.id}
-            draggable
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDrop={(e) => handleDrop(e, index)}
-            onDragEnd={handleDragEnd}
-            className={cn(
-              'transition-opacity duration-100 rounded-xl',
-              dragIndex === index && 'opacity-40',
-              dragOverIndex === index && dragIndex !== index && 'ring-2 ring-indigo-500 ring-offset-1'
-            )}
-          >
-            {/* Pointer-events:none on children prevents them from swallowing dragover events */}
-            <div className={cn(dragIndex !== null && 'pointer-events-none')}>
-              <TaskCard task={task} onEdit={(t) => setEditTask(t)} isDraggable />
+          <div key={task.id} className="flex items-center gap-1">
+            {/* Up / Down buttons */}
+            <div className="flex flex-col gap-0.5 flex-shrink-0">
+              <button
+                onClick={() => reorderTasks(index, index - 1)}
+                disabled={index === 0}
+                className="h-6 w-6 flex items-center justify-center rounded text-xs c-faint hover:c-text hover:bg-surface-md transition-all disabled:opacity-0"
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => reorderTasks(index, index + 1)}
+                disabled={index === openTasks.length - 1}
+                className="h-6 w-6 flex items-center justify-center rounded text-xs c-faint hover:c-text hover:bg-surface-md transition-all disabled:opacity-0"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <TaskCard task={task} onEdit={(t) => setEditTask(t)} />
             </div>
           </div>
         ))}
       </div>
 
+      {/* Done tasks */}
       {doneTasks.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-medium c-faint uppercase tracking-wider">Erledigt</p>
