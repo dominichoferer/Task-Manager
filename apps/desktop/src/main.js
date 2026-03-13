@@ -49,6 +49,10 @@ function createWindow() {
         z-index: 2147483647;
         pointer-events: auto;
       }
+      /* HTML5 drag-and-drop must not be intercepted by the window-drag region */
+      [draggable="true"] {
+        -webkit-app-region: no-drag !important;
+      }
     `);
     mainWindow.webContents.executeJavaScript(`
       if (!document.getElementById('electron-drag-region')) {

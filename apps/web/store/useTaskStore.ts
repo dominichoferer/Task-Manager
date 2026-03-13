@@ -44,6 +44,7 @@ export interface Task {
   company_id: string | null;
   user_id: string;
   created_at: string;
+  completed_at: string | null;
   attachments: TaskAttachment[];
   company?: Company;
 }
@@ -58,6 +59,7 @@ export interface CreateTaskInput {
   priority?: TaskPriority;
   company_id?: string;
   attachments?: TaskAttachment[];
+  completed_at?: string | null;
 }
 
 interface TaskStore {
@@ -137,7 +139,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   taskOrder: getSavedTaskOrder(),
   companies: [],
   quickNotes: [],
-  activeCategory: 'all',
+  activeCategory: 'work',
   activeDateFilter: 'all',
   theme: 'nacht',
   loading: false,
@@ -214,7 +216,10 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   toggleTaskStatus: async (task) => {
     const next = task.status === 'done' ? 'open' : 'done';
-    await get().updateTask(task.id, { status: next });
+    await get().updateTask(task.id, {
+      status: next,
+      completed_at: next === 'done' ? new Date().toISOString() : null,
+    });
   },
 
   reorderTasks: (fromIndex, toIndex) => {
@@ -432,22 +437,30 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       });
     }
 
-    // Apply custom drag-drop order for open tasks
-    if (taskOrder.length > 0) {
-      filtered = [...filtered].sort((a, b) => {
-        if (a.status === 'done' && b.status !== 'done') return 1;
-        if (a.status !== 'done' && b.status === 'done') return -1;
-        if (a.status === 'done' && b.status === 'done') return 0;
-        const ai = taskOrder.indexOf(a.id);
-        const bi = taskOrder.indexOf(b.id);
-        if (ai === -1 && bi === -1) return 0;
-        if (ai === -1) return 1;
-        if (bi === -1) return -1;
-        return ai - bi;
-      });
-    }
+    const openTasks = filtered.filter((t) => t.status !== 'done');
+    const doneTasks = filtered.filter((t) => t.status === 'done');
 
-    return filtered;
+    // Open tasks: custom drag order first; unordered new tasks appear at top (by created_at desc)
+    const sortedOpen = [...openTasks].sort((a, b) => {
+      const ai = taskOrder.indexOf(a.id);
+      const bi = taskOrder.indexOf(b.id);
+      // Both in custom order → respect it
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      // Neither in custom order → newest first
+      if (ai === -1 && bi === -1) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      // Unordered items come first (newest tasks appear at top)
+      if (ai === -1) return -1;
+      return 1;
+    });
+
+    // Done tasks: most recently completed first
+    const sortedDone = [...doneTasks].sort((a, b) => {
+      const at = a.completed_at ? new Date(a.completed_at).getTime() : new Date(a.created_at).getTime();
+      const bt = b.completed_at ? new Date(b.completed_at).getTime() : new Date(b.created_at).getTime();
+      return bt - at;
+    });
+
+    return [...sortedOpen, ...sortedDone];
   },
 }));
 

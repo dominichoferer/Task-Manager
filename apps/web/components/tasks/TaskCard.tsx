@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip, AlignLeft, GripVertical } from 'lucide-react';
+import { Check, Trash2, Pencil, CalendarDays, Building2, FileText, Image as ImageIcon, Paperclip, AlignLeft, GripVertical, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Task, TaskAttachment } from '@/store/useTaskStore';
@@ -170,38 +170,46 @@ export function TaskCard({ task, onEdit, isDraggable }: TaskCardProps) {
         )}
 
         {/* Meta row */}
-        <div className="mt-2 flex items-center flex-wrap gap-2">
-          {task.company && (
-            <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-white"
-              style={{
-                backgroundColor: task.company.color,
-              }}
-            >
-              <Building2 className="h-3 w-3" />
-              {task.company.abbreviation}
-            </span>
-          )}
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="flex items-center flex-wrap gap-2">
+            {task.company && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-white"
+                style={{ backgroundColor: task.company.color }}
+              >
+                <Building2 className="h-3 w-3" />
+                {task.company.abbreviation}
+              </span>
+            )}
 
-          {dueInfo && (
+            {dueInfo && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 text-xs',
+                  dueInfo.urgent ? 'text-red-400' : 'c-subtle'
+                )}
+              >
+                <CalendarDays className="h-3 w-3" />
+                {dueInfo.label}
+              </span>
+            )}
+
             <span
               className={cn(
-                'inline-flex items-center gap-1 text-xs',
-                dueInfo.urgent ? 'text-red-400' : 'c-subtle'
+                'inline-flex items-center px-1.5 py-0.5 rounded text-xs border',
+                priorityColors[task.priority]
               )}
             >
-              <CalendarDays className="h-3 w-3" />
-              {dueInfo.label}
+              {task.priority === 'high' ? 'Hoch' : task.priority === 'medium' ? 'Mittel' : 'Niedrig'}
             </span>
-          )}
+          </div>
 
-          <span
-            className={cn(
-              'inline-flex items-center px-1.5 py-0.5 rounded text-xs border',
-              priorityColors[task.priority]
-            )}
-          >
-            {task.priority === 'high' ? 'Hoch' : task.priority === 'medium' ? 'Mittel' : 'Niedrig'}
+          {/* Created / completed date – bottom right */}
+          <span className="inline-flex items-center gap-1 text-[10px] c-faint flex-shrink-0 ml-auto">
+            <Clock className="h-2.5 w-2.5" />
+            {isDone && task.completed_at
+              ? `Erledigt ${format(new Date(task.completed_at), 'dd.MM.yy', { locale: de })}`
+              : format(new Date(task.created_at), 'dd.MM.yy', { locale: de })}
           </span>
         </div>
       </div>
