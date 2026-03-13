@@ -83,7 +83,7 @@ interface TaskStore {
   updateTask: (id: string, input: Partial<CreateTaskInput>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTaskStatus: (task: Task) => Promise<void>;
-  reorderTasks: (fromIndex: number, toIndex: number) => void;
+  reorderTasks: (fromId: string, toId: string) => void;
   uploadAttachment: (taskId: string, file: File) => Promise<TaskAttachment>;
 
   fetchQuickNotes: () => Promise<void>;
@@ -222,23 +222,26 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     });
   },
 
-  reorderTasks: (fromIndex, toIndex) => {
+  reorderTasks: (fromId, toId) => {
     const { tasks, taskOrder } = get();
-    // Build ordered list of open task IDs
+    // Mirror the same sort as getFilteredTasks for open tasks
     const openIds = tasks
       .filter((t) => t.status !== 'done')
       .sort((a, b) => {
         const ai = taskOrder.indexOf(a.id);
         const bi = taskOrder.indexOf(b.id);
-        if (ai === -1 && bi === -1) return 0;
-        if (ai === -1) return 1;
-        if (bi === -1) return -1;
-        return ai - bi;
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai === -1 && bi === -1) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (ai === -1) return -1;
+        return 1;
       })
       .map((t) => t.id);
+    const from = openIds.indexOf(fromId);
+    const to = openIds.indexOf(toId);
+    if (from === -1 || to === -1) return;
     const newOrder = [...openIds];
-    const [moved] = newOrder.splice(fromIndex, 1);
-    newOrder.splice(toIndex, 0, moved);
+    newOrder.splice(from, 1);
+    newOrder.splice(to, 0, fromId);
     if (typeof window !== 'undefined') {
       localStorage.setItem('taskOrder', JSON.stringify(newOrder));
     }

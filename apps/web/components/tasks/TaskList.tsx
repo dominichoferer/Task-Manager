@@ -66,16 +66,16 @@ export function TaskList() {
             {/* Up / Down buttons */}
             <div className="flex flex-col gap-0.5 flex-shrink-0">
               <button
-                onClick={() => reorderTasks(index, index - 1)}
+                onClick={() => index > 0 && reorderTasks(task.id, openTasks[index - 1].id)}
                 disabled={index === 0}
-                className="h-6 w-6 flex items-center justify-center rounded text-xs c-faint hover:c-text hover:bg-surface-md transition-all disabled:opacity-0"
+                className="h-6 w-6 flex items-center justify-center rounded c-faint hover:c-text hover:bg-surface-md transition-all disabled:invisible"
               >
                 <ChevronUp className="h-3.5 w-3.5" />
               </button>
               <button
-                onClick={() => reorderTasks(index, index + 1)}
+                onClick={() => index < openTasks.length - 1 && reorderTasks(task.id, openTasks[index + 1].id)}
                 disabled={index === openTasks.length - 1}
-                className="h-6 w-6 flex items-center justify-center rounded text-xs c-faint hover:c-text hover:bg-surface-md transition-all disabled:opacity-0"
+                className="h-6 w-6 flex items-center justify-center rounded c-faint hover:c-text hover:bg-surface-md transition-all disabled:invisible"
               >
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
