@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,35 +14,41 @@ export function TaskList() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
 
-  // Drag-and-drop state
-  const dragIndexRef = useRef<number | null>(null);
+  // Drag-and-drop state – both as useState so re-renders fire correctly
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const tasks = getFilteredTasks();
   const openTasks = tasks.filter((t) => t.status !== 'done');
   const doneTasks = tasks.filter((t) => t.status === 'done');
 
-  function handleDragStart(index: number) {
-    dragIndexRef.current = index;
+  function handleDragStart(e: React.DragEvent, index: number) {
+    // dataTransfer.setData is required by browsers to activate drag
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
+    setDragIndex(index);
   }
 
   function handleDragOver(e: React.DragEvent, index: number) {
     e.preventDefault();
-    setDragOverIndex(index);
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) setDragOverIndex(index);
   }
 
   function handleDrop(e: React.DragEvent, index: number) {
     e.preventDefault();
-    const from = dragIndexRef.current;
+    e.stopPropagation();
+    const from = dragIndex;
     if (from !== null && from !== index) {
       reorderTasks(from, index);
     }
-    dragIndexRef.current = null;
+    setDragIndex(null);
     setDragOverIndex(null);
   }
 
   function handleDragEnd() {
-    dragIndexRef.current = null;
+    setDragIndex(null);
     setDragOverIndex(null);
   }
 
@@ -93,18 +99,20 @@ export function TaskList() {
           <div
             key={task.id}
             draggable
-            onDragStart={() => handleDragStart(index)}
+            onDragStart={(e) => handleDragStart(e, index)}
             onDragOver={(e) => handleDragOver(e, index)}
             onDrop={(e) => handleDrop(e, index)}
             onDragEnd={handleDragEnd}
             className={cn(
-              'transition-all duration-150',
-              dragOverIndex === index && dragIndexRef.current !== index
-                ? 'translate-y-0.5 opacity-50'
-                : ''
+              'transition-opacity duration-100 rounded-xl',
+              dragIndex === index && 'opacity-40',
+              dragOverIndex === index && dragIndex !== index && 'ring-2 ring-indigo-500 ring-offset-1'
             )}
           >
-            <TaskCard task={task} onEdit={(t) => setEditTask(t)} isDraggable />
+            {/* Pointer-events:none on children prevents them from swallowing dragover events */}
+            <div className={cn(dragIndex !== null && 'pointer-events-none')}>
+              <TaskCard task={task} onEdit={(t) => setEditTask(t)} isDraggable />
+            </div>
           </div>
         ))}
       </div>
